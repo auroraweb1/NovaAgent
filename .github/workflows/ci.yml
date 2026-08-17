@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Tests and quality checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install uv and Python
+        uses: astral-sh/setup-uv@v6
+        with:
+          version: "0.12.4"
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install locked dependencies
+        run: uv sync --all-groups --locked
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov=novaagent --cov-report=term-missing
+
+      - name: Run Ruff lint
+        run: uv run ruff check .
+
+      - name: Check Ruff formatting
+        run: uv run ruff format --check .
+
+      - name: Run Mypy
+        run: uv run mypy src tests
+
+      - name: Run diagnostics
+        run: uv run novaagent doctor --environment test
+        env:
+          NOVAAGENT_DATA_DIR: ${{ runner.temp }}/novaagent-data
+          NOVAAGENT_LOG_DIR: ${{ runner.temp }}/novaagent-logs
+          NOVAAGENT_WORKSPACE_DIR: ${{ runner.temp }}/novaagent-workspace
