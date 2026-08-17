@@ -50,6 +50,55 @@ class MessageTooLongError(NovaAgentError):
         )
 
 
+class SessionNotFoundError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="会话不存在或已关闭", code="session_not_found")
+
+
+class SessionBusyError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="当前会话正在生成，请先停止当前请求",
+            code="session_busy",
+            retryable=True,
+        )
+
+
+class SessionRevisionConflictError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="会话已被其他页面更新，请刷新后重试",
+            code="session_revision_conflict",
+            retryable=True,
+        )
+
+
+class SessionLimitReachedError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="当前服务的会话数量已达到上限", code="session_limit_reached")
+
+
+class ContextTooLargeError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="当前消息超过上下文预算，请缩短输入后重试",
+            code="context_too_large",
+        )
+
+
+class RunNotFoundError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="生成任务不存在或已经结束", code="run_not_found")
+
+
+class StreamProtocolInvalidError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问流式响应格式无效，请稍后重试",
+            code="stream_protocol_invalid",
+        )
+
+
 class PathConfigurationError(NovaAgentError):
     def __init__(self, message: str, *, field: str | None = None) -> None:
         super().__init__(message=message, code="path_invalid", field=field)

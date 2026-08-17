@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import random
 from collections.abc import AsyncIterator, Awaitable, Callable, Mapping
 from typing import cast
@@ -20,6 +21,7 @@ from novaagent.domain.errors import (
     ProviderTimeoutError,
     ProviderUnavailableError,
     SecretMissingError,
+    StreamProtocolInvalidError,
 )
 from novaagent.domain.events import TokenUsage
 from novaagent.domain.messages import MessageRole, TextBlock
@@ -62,7 +64,7 @@ class QwenModelAdapter:
                 field="providers.qwen.secret",
             )
 
-        payload = self._request_payload(request)
+        payload = self._request_payload(request, streaming=False)
         acquired = False
         try:
             try:
@@ -78,7 +80,31 @@ class QwenModelAdapter:
         for output in outputs:
             yield output
 
-    def _request_payload(self, request: ModelRequest) -> dict[str, object]:
+    async def stream_live(self, request: ModelRequest) -> AsyncIterator[ModelOutput]:
+        api_key = self._secret_provider()
+        if api_key is None or not api_key.strip():
+            raise SecretMissingError(
+                "未配置千问 API Key，请在本地 .env 或服务端运行时环境中配置 DASHSCOPE_API_KEY",
+                field="providers.qwen.secret",
+            )
+
+        payload = self._request_payload(request, streaming=True)
+        acquired = False
+        try:
+            try:
+                await asyncio.wait_for(self._semaphore.acquire(), timeout=1.0)
+            except TimeoutError as error:
+                raise ProviderBusyError() from error
+            acquired = True
+            async for output in self._request_stream(payload, api_key):
+                yield output
+        finally:
+            if acquired:
+                self._semaphore.release()
+
+    def _request_payload(
+        self, request: ModelRequest, *, streaming: bool = False
+    ) -> dict[str, object]:
         if request.tools:
             raise ProtocolValidationError(
                 "Qwen stage 03 adapter does not support tools", field="tools"
@@ -102,12 +128,104 @@ class QwenModelAdapter:
         payload: dict[str, object] = {
             "model": self._settings.model,
             "messages": messages,
-            "stream": False,
+            "stream": streaming,
             "enable_thinking": False,
             "temperature": request.options.temperature,
             "max_tokens": request.options.max_output_tokens,
         }
+        if streaming:
+            payload["stream_options"] = {"include_usage": True}
         return {key: value for key, value in payload.items() if value is not None}
+
+    async def _request_stream(
+        self, payload: dict[str, object], api_key: str
+    ) -> AsyncIterator[ModelOutput]:
+        attempts = self._settings.max_retries + 1
+        for attempt in range(attempts):
+            emitted = False
+            try:
+                async with self._client.stream(
+                    "POST",
+                    QWEN_CHAT_URL,
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=self._timeout,
+                ) as response:
+                    if response.status_code >= 400:
+                        if (
+                            response.status_code in RETRYABLE_STATUS_CODES
+                            and attempt + 1 < attempts
+                        ):
+                            await self._sleep(self._retry_delay(attempt, response))
+                            continue
+                        raise self._http_error(response)
+
+                    saw_done = False
+                    saw_text = False
+                    usage: TokenUsage | None = None
+                    async for line in response.aiter_lines():
+                        line = line.strip()
+                        if not line or line.startswith(":"):
+                            continue
+                        if not line.startswith("data:"):
+                            raise StreamProtocolInvalidError()
+                        raw_data = line[5:].strip()
+                        if raw_data == "[DONE]":
+                            saw_done = True
+                            break
+                        try:
+                            chunk = json.loads(raw_data)
+                        except json.JSONDecodeError as error:
+                            raise StreamProtocolInvalidError() from error
+                        if not isinstance(chunk, Mapping):
+                            raise StreamProtocolInvalidError()
+                        usage = _stream_usage(chunk, usage)
+                        choices = chunk.get("choices")
+                        if choices == [] and usage is not None:
+                            continue
+                        if not isinstance(choices, list) or not choices:
+                            raise StreamProtocolInvalidError()
+                        choice = choices[0]
+                        if not isinstance(choice, Mapping):
+                            raise StreamProtocolInvalidError()
+                        delta = choice.get("delta")
+                        if not isinstance(delta, Mapping):
+                            raise StreamProtocolInvalidError()
+                        if delta.get("tool_calls"):
+                            raise ProviderResponseInvalidError()
+                        content = delta.get("content")
+                        if content is None:
+                            continue
+                        if not isinstance(content, str):
+                            raise ProviderResponseInvalidError()
+                        if content:
+                            saw_text = True
+                            emitted = True
+                            yield TextModelDelta(content)
+                    if not saw_done or not saw_text:
+                        raise StreamProtocolInvalidError()
+                    if usage is not None:
+                        yield UsageModelOutput(usage)
+                    return
+            except (httpx.ConnectError, httpx.ConnectTimeout) as error:
+                if not emitted and attempt + 1 < attempts:
+                    await self._sleep(self._retry_delay(attempt, None))
+                    continue
+                raise ProviderUnavailableError() from error
+            except httpx.PoolTimeout as error:
+                raise ProviderBusyError() from error
+            except (httpx.ReadTimeout, httpx.WriteTimeout) as error:
+                raise ProviderTimeoutError() from error
+            except httpx.RequestError as error:
+                if not emitted and attempt + 1 < attempts:
+                    await self._sleep(self._retry_delay(attempt, None))
+                    continue
+                raise ProviderUnavailableError() from error
+
+        raise ProviderUnavailableError()
 
     async def _request_outputs(
         self, payload: dict[str, object], api_key: str
@@ -228,3 +346,16 @@ class QwenModelAdapter:
 
 def _valid_token_count(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+def _stream_usage(chunk: Mapping[str, object], current: TokenUsage | None) -> TokenUsage | None:
+    usage_data = chunk.get("usage")
+    if usage_data is None:
+        return current
+    if not isinstance(usage_data, Mapping):
+        raise ProviderResponseInvalidError()
+    input_tokens = usage_data.get("prompt_tokens")
+    output_tokens = usage_data.get("completion_tokens")
+    if not _valid_token_count(input_tokens) or not _valid_token_count(output_tokens):
+        raise ProviderResponseInvalidError()
+    return TokenUsage(cast(int, input_tokens), cast(int, output_tokens))

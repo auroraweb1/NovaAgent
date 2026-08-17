@@ -15,6 +15,7 @@ from novaagent.domain.events import (
     AgentEvent,
     AgentEventPayload,
     ArtifactPayload,
+    ContextPreparedPayload,
     ErrorPayload,
     MessageCompletedPayload,
     MessageStartedPayload,
@@ -280,6 +281,12 @@ def _payload_to_dict(payload: object) -> dict[str, object]:
         return {} if payload.session_id is None else {"session_id": payload.session_id}
     if isinstance(payload, MessageStartedPayload):
         return {"message_id": payload.message_id}
+    if isinstance(payload, ContextPreparedPayload):
+        return {
+            "included_messages": payload.included_messages,
+            "dropped_messages": payload.dropped_messages,
+            "estimated_input_tokens": payload.estimated_input_tokens,
+        }
     if isinstance(payload, TextDeltaPayload):
         return {"message_id": payload.message_id, "delta": payload.delta}
     if isinstance(payload, ReasoningSummaryDeltaPayload):
@@ -326,6 +333,12 @@ def _payload_from_dict(event_type: str, payload: Mapping[str, JsonValue]) -> Age
             return RunStartedPayload(session_id=_optional_str(data, "session_id"))
         if event_type == "message_started":
             return MessageStartedPayload(message_id=_required_str(data, "message_id"))
+        if event_type == "context_prepared":
+            return ContextPreparedPayload(
+                included_messages=_required_int(data, "included_messages"),
+                dropped_messages=_required_int(data, "dropped_messages"),
+                estimated_input_tokens=_required_int(data, "estimated_input_tokens"),
+            )
         if event_type == "text_delta":
             return TextDeltaPayload(
                 message_id=_required_str(data, "message_id"),
@@ -427,6 +440,13 @@ def _required_str(data: Mapping[str, object], key: str, *, allow_whitespace: boo
         raise ProtocolValidationError(
             f"payload.{key} must be a non-empty string", field=f"payload.{key}"
         )
+    return value
+
+
+def _required_int(data: Mapping[str, object], key: str) -> int:
+    value = data.get(key)
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise ProtocolValidationError(f"payload.{key} must be an integer", field=f"payload.{key}")
     return value
 
 

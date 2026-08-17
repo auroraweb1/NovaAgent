@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.request
@@ -57,6 +58,7 @@ def _dispatch(args: argparse.Namespace) -> int:
 
 
 def _doctor(args: argparse.Namespace) -> int:
+    supports_env_file = hasattr(args, "env_file")
     env_file = getattr(args, "env_file", None)
     settings = build_settings(
         config_file=args.config_file,
@@ -65,7 +67,11 @@ def _doctor(args: argparse.Namespace) -> int:
     )
     paths = runtime_paths(settings)
     paths.ensure_directories()
-    environment = load_runtime_environment(env_file=env_file)
+    environment = (
+        load_runtime_environment(env_file=env_file)
+        if supports_env_file
+        else load_runtime_environment(environ=dict(os.environ))
+    )
     provider_details = {
         name: {
             "enabled": name in settings.providers.enabled,

@@ -16,7 +16,9 @@
 
 阶段 03 的代码、自动化质量门禁和真实千问 Web 单轮演示均已完成。项目负责人确认页面、真实回答、模型元信息、usage、输入校验、单轮语义和安全边界表现正常，因此本报告将阶段状态记录为“已验收”，并允许阶段 04 进入设计。
 
-本阶段没有实现豆包、流式输出、多轮会话、SessionStore、工具、Markdown、多模态或 Web 密钥管理。以上能力仍按总体路线留在后续阶段。
+本阶段没有实现豆包、流式输出、多轮会话、SessionStore、工具、Markdown、多模态或 Web 密钥管理。流式、多轮、工具和控制台能力继续按总体路线建设；后续范围变更已取消豆包接入和模型多模态任务，Web 仍永久不管理 Provider 密钥。
+
+项目负责人于 2026-08-17 在阶段 04 验收后确认千问为唯一模型 Provider。以下关于豆包白名单和诊断的内容是阶段 03 已验收实现的历史事实，遗留兼容面由进度矩阵 MOD-06 跟踪清理，不代表当前产品支持豆包。
 
 ## 2. 当前阶段结论
 
@@ -61,11 +63,11 @@
 已实现：
 
 - 默认 Provider 固定为 `qwen`，默认模型固定为 `qwen3.8-max`。
-- 阶段 03 要求启用列表包含 `qwen`，豆包尚不能成为默认 Provider。
+- 阶段 03 要求启用列表包含 `qwen`，豆包不能成为默认 Provider；当前目标进一步收敛为启用列表只能包含 `qwen`。
 - 千问模型名要求以 `qwen` 开头，最长 128 字符，只允许小写字母、数字、点、下划线和连字符。
 - `temperature`、`max_output_tokens`、`timeout_seconds`、`max_retries` 和 `max_concurrency` 具有明确默认值和上下界。
 - 官方 Base URL 不属于配置 Schema；`NOVAAGENT_QWEN_BASE_URL` 会作为未知环境变量被拒绝。
-- Provider 白名单仍严格等于 `qwen` 和 `doubao`，没有自定义 Provider 注册入口。
+- 阶段 03 验收时 Provider 白名单为 `qwen` 和 `doubao`，没有自定义 Provider 注册入口；当前目标通过 MOD-06 删除豆包。
 - `DASHSCOPE_API_KEY` 不进入 `Settings`，只在 Bootstrap 提供的服务端运行时环境快照中解析；该快照支持进程环境和 Git 忽略的本地 `.env` 文件，进程环境变量优先。
 - 千问能力声明为纯文本输入输出、可选 usage，不支持原生流式、工具、思考摘要、图片或音频。
 
@@ -233,7 +235,7 @@ UV_CACHE_DIR=/private/tmp/novaagent-uv-cache \
 uv run novaagent doctor --environment test
 ```
 
-结果：`status: ok`。千问和豆包仍是仅有的启用 Provider；未提供真实密钥时只产生预期 warning，不影响诊断成功，也不泄露密钥值。
+结果：`status: ok`。阶段 03 验收时千问和豆包是启用 Provider；未提供真实密钥时只产生预期 warning，不影响诊断成功，也不泄露密钥值。当前产品已改为仅千问，豆包诊断输出待 MOD-06 清理。
 
 ## 5. MockTransport 无网络演示
 
@@ -294,7 +296,7 @@ uv run novaagent doctor --environment test
 - 用户和模型文本用 `textContent` 展示，不执行 HTML 或脚本。
 - 请求体、字符数、超时、重试和并发均有明确上限。
 - 无密钥时健康和诊断可用，聊天失败且零出站请求。
-- Provider 范围仍只有千问和豆包，本阶段只实例化千问。
+- 当前产品范围只有千问；阶段 03 已验收代码中的豆包配置兼容面不实例化模型，并待 MOD-06 清理。
 - 用户聊天入口仍只有 Web，没有增加 CLI、桌面端或第三方消息通道。
 
 ## 8. 真实千问 Web 验收记录

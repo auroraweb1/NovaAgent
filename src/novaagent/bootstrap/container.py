@@ -8,7 +8,7 @@ import httpx
 from fastapi import FastAPI
 
 from novaagent import __version__
-from novaagent.application.chat import SingleTurnChatService
+from novaagent.application.chat import MultiTurnChatService, SingleTurnChatService
 from novaagent.application.diagnostics import DiagnosticsService
 from novaagent.config.loader import load_settings
 from novaagent.config.model import Settings
@@ -17,6 +17,7 @@ from novaagent.domain.models import ProviderDescriptor
 from novaagent.domain.ports import ModelOptions
 from novaagent.infrastructure.logging import configure_logging
 from novaagent.infrastructure.models.qwen import QwenModelAdapter
+from novaagent.infrastructure.sessions import InMemorySessionStore
 from novaagent.interfaces.web import create_app
 
 
@@ -63,6 +64,15 @@ def build_app(
             max_output_tokens=settings.providers.qwen.max_output_tokens,
         ),
     )
+    session_store = InMemorySessionStore()
+    multi_turn_service = MultiTurnChatService(
+        model=model,
+        store=session_store,
+        options=ModelOptions(
+            temperature=settings.providers.qwen.temperature,
+            max_output_tokens=settings.providers.qwen.max_output_tokens,
+        ),
+    )
     diagnostics = DiagnosticsService(settings, __version__, environ=environment)
 
     @asynccontextmanager
@@ -76,6 +86,7 @@ def build_app(
         settings,
         chat_service=chat_service,
         diagnostics=diagnostics,
+        multi_turn_service=multi_turn_service,
         lifespan=lifespan,
         environ=environment,
     )

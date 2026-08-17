@@ -8,6 +8,7 @@ from novaagent.domain.errors import EventSequenceError, ProtocolValidationError
 from novaagent.domain.events import (
     AgentEvent,
     ArtifactPayload,
+    ContextPreparedPayload,
     ErrorPayload,
     EventSequenceValidator,
     MessageCompletedPayload,
@@ -77,6 +78,17 @@ def test_successful_and_failed_sequences_are_valid() -> None:
     )
     validate_event_sequence(
         [event(0, RunStartedPayload()), event(1, RunCancelledPayload("user request"))]
+    )
+    validate_event_sequence(
+        [
+            event(0, RunStartedPayload()),
+            event(1, ContextPreparedPayload(2, 0, 120)),
+            event(2, MessageStartedPayload("msg-1")),
+            event(3, TextDeltaPayload("msg-1", "你")),
+            event(4, TextDeltaPayload("msg-1", "好")),
+            event(5, MessageCompletedPayload(assistant_message())),
+            event(6, RunCompletedPayload("msg-1")),
+        ]
     )
 
 

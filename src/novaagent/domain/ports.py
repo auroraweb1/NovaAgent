@@ -15,6 +15,7 @@ from novaagent.domain.messages import (
     freeze_json_object,
     validate_identifier,
 )
+from novaagent.domain.sessions import SessionSnapshot, SessionSummary
 
 
 class HealthPort(Protocol):
@@ -140,3 +141,29 @@ class SessionStorePort(Protocol):
     async def get_messages(self, session_id: str) -> tuple[Message, ...]: ...
 
     async def append_messages(self, session_id: str, messages: Sequence[Message]) -> None: ...
+
+
+class MultiTurnSessionStorePort(Protocol):
+    async def create_session(self) -> SessionSnapshot: ...
+
+    async def list_sessions(self) -> tuple[SessionSummary, ...]: ...
+
+    async def get_session(self, session_id: str) -> SessionSnapshot: ...
+
+    async def commit_turn(
+        self,
+        session_id: str,
+        expected_revision: int,
+        user: Message,
+        assistant: Message,
+    ) -> SessionSnapshot: ...
+
+    async def clear_session(self, session_id: str, expected_revision: int) -> SessionSnapshot: ...
+
+    async def delete_session(self, session_id: str, expected_revision: int) -> None: ...
+
+    async def set_active_run(
+        self, session_id: str, expected_revision: int, run_id: str
+    ) -> SessionSnapshot: ...
+
+    async def clear_active_run(self, session_id: str, run_id: str) -> None: ...

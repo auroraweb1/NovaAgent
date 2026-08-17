@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Callable
 from datetime import UTC, datetime
 from uuid import uuid4
 
+from novaagent.application.chat.context_window import ContextSelection
 from novaagent.domain.errors import (
     DependencyUnavailableError,
     EmptyMessageError,
@@ -13,11 +15,13 @@ from novaagent.domain.errors import (
 from novaagent.domain.events import (
     AgentEvent,
     AgentEventPayload,
+    ContextPreparedPayload,
     ErrorPayload,
     EventSequenceValidator,
     MessageCompletedPayload,
     MessageStartedPayload,
     ReasoningSummaryDeltaPayload,
+    RunCancelledPayload,
     RunCompletedPayload,
     RunFailedPayload,
     RunStartedPayload,
@@ -68,6 +72,8 @@ async def run_protocol(
     session_id: str | None = None,
     id_factory: IdFactory | None = None,
     clock: Clock | None = None,
+    context: ContextSelection | None = None,
+    cancellation_reason: Callable[[], str] | str = "user_requested",
 ) -> Message:
     """Drive one deterministic model stream into a validated AgentEvent sequence."""
     make_id = id_factory or _default_id_factory
@@ -91,6 +97,14 @@ async def run_protocol(
         sequence += 1
 
     await publish(RunStartedPayload(session_id=session_id))
+    if context is not None:
+        await publish(
+            ContextPreparedPayload(
+                included_messages=context.included_messages,
+                dropped_messages=context.dropped_messages,
+                estimated_input_tokens=context.estimated_input_tokens,
+            )
+        )
     await publish(MessageStartedPayload(message_id=message_id))
 
     text_parts: list[str] = []
@@ -118,6 +132,14 @@ async def run_protocol(
             output = await anext(iterator)
         except StopAsyncIteration:
             break
+        except asyncio.CancelledError:
+            reason = cancellation_reason() if callable(cancellation_reason) else cancellation_reason
+            try:
+                await publish(RunCancelledPayload(reason=reason))
+                validator.finish()
+            except Exception:
+                pass
+            raise
         except Exception as error:
             public_error = await fail(error)
             raise public_error from error

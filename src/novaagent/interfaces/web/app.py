@@ -1,33 +1,48 @@
 from __future__ import annotations
 
+import asyncio
+import json
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import AbstractAsyncContextManager
 from pathlib import Path
 from typing import Annotated
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, Header, Request
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi import Depends, FastAPI, Header, Query, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import ValidationError
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
 from novaagent import __version__
-from novaagent.application.chat import SingleTurnChatService
+from novaagent.application.chat import MultiTurnChatService, SingleTurnChatService
 from novaagent.application.diagnostics import DiagnosticsService
 from novaagent.application.health import HealthService
 from novaagent.config.loader import runtime_paths
 from novaagent.config.model import Settings
 from novaagent.domain.errors import (
     AuthenticationRequiredError,
+    EmptyMessageError,
+    MessageTooLongError,
     NovaAgentError,
     RequestInvalidError,
     RequestTooLargeError,
+    RunNotFoundError,
+    SessionBusyError,
+    SessionRevisionConflictError,
 )
+from novaagent.domain.events import TERMINAL_EVENT_TYPES, AgentEvent
 from novaagent.interfaces.web.chat_protocol import (
     ChatRequestSchema,
     chat_response_from_result,
+)
+from novaagent.interfaces.web.protocol import event_to_dict
+from novaagent.interfaces.web.session_protocol import (
+    StreamChatRequestSchema,
+    session_detail_response,
+    session_response,
+    summary_to_schema,
 )
 
 CHAT_BODY_LIMIT = 64 * 1024
@@ -53,6 +68,13 @@ _ERROR_STATUS = {
     "provider_response_invalid": 502,
     "protocol_invalid": 500,
     "dependency_unavailable": 503,
+    "session_not_found": 404,
+    "session_busy": 409,
+    "session_revision_conflict": 409,
+    "session_limit_reached": 409,
+    "context_too_large": 422,
+    "run_not_found": 404,
+    "stream_protocol_invalid": 502,
 }
 
 
@@ -61,6 +83,7 @@ def create_app(
     *,
     chat_service: SingleTurnChatService,
     diagnostics: DiagnosticsService,
+    multi_turn_service: MultiTurnChatService,
     lifespan: Lifespan,
     environ: Mapping[str, str],
 ) -> FastAPI:
@@ -156,6 +179,133 @@ def create_app(
         response = chat_response_from_result(result)
         return JSONResponse(response.model_dump(mode="json"))
 
+    @app.post("/api/v1/sessions", status_code=201)
+    async def create_session(_: None = Depends(require_auth)) -> JSONResponse:
+        snapshot = await multi_turn_service.store.create_session()
+        return JSONResponse(session_response(snapshot).model_dump(mode="json"), status_code=201)
+
+    @app.get("/api/v1/sessions")
+    async def list_sessions(_: None = Depends(require_auth)) -> dict[str, object]:
+        summaries = await multi_turn_service.store.list_sessions()
+        return {
+            "protocol_version": "1",
+            "sessions": [summary_to_schema(item).model_dump(mode="json") for item in summaries],
+        }
+
+    @app.get("/api/v1/sessions/{session_id}")
+    async def get_session(session_id: str, _: None = Depends(require_auth)) -> JSONResponse:
+        snapshot = await multi_turn_service.store.get_session(session_id)
+        return JSONResponse(session_detail_response(snapshot).model_dump(mode="json"))
+
+    @app.delete("/api/v1/sessions/{session_id}/messages")
+    async def clear_session(
+        session_id: str,
+        expected_revision: int = Query(ge=0),
+        _: None = Depends(require_auth),
+    ) -> JSONResponse:
+        snapshot = await multi_turn_service.store.clear_session(session_id, expected_revision)
+        return JSONResponse(session_detail_response(snapshot).model_dump(mode="json"))
+
+    @app.delete("/api/v1/sessions/{session_id}", status_code=204)
+    async def delete_session(
+        session_id: str,
+        expected_revision: int = Query(ge=0),
+        _: None = Depends(require_auth),
+    ) -> None:
+        await multi_turn_service.store.delete_session(session_id, expected_revision)
+
+    @app.post("/api/v1/runs/{run_id}/cancel", status_code=202)
+    async def cancel_run(run_id: str, _: None = Depends(require_auth)) -> JSONResponse:
+        if not await multi_turn_service.cancel(run_id, reason="user_requested"):
+            raise RunNotFoundError()
+        return JSONResponse(
+            {
+                "protocol_version": "1",
+                "run_id": run_id,
+                "status": "cancellation_requested",
+            },
+            status_code=202,
+        )
+
+    @app.post("/api/v1/sessions/{session_id}/messages:stream")
+    async def stream_chat(
+        session_id: str,
+        request: Request,
+        _: None = Depends(require_auth),
+    ) -> StreamingResponse:
+        stream_request = await _read_json_model(request, StreamChatRequestSchema)
+        if not stream_request.message.strip():
+            raise EmptyMessageError()
+        if len(stream_request.message) > 32_000:
+            raise MessageTooLongError(32_000)
+        session = await multi_turn_service.store.get_session(session_id)
+        if session.revision != stream_request.expected_revision:
+            raise SessionRevisionConflictError()
+        if session.active_run_id is not None:
+            raise SessionBusyError()
+        await multi_turn_service.validate_context(
+            session_id=session_id,
+            text=stream_request.message,
+        )
+
+        queue: asyncio.Queue[AgentEvent | None] = asyncio.Queue(maxsize=64)
+        run_id_holder: dict[str, str | None] = {"run_id": None}
+
+        async def produce() -> None:
+            try:
+                await multi_turn_service.stream_chat(
+                    session_id=session_id,
+                    expected_revision=stream_request.expected_revision,
+                    text=stream_request.message,
+                    sink=_QueueSink(queue, run_id_holder),
+                )
+            except asyncio.CancelledError:
+                raise
+            except NovaAgentError:
+                # Model errors are already represented by error/run_failed events.
+                pass
+            finally:
+                await queue.put(None)
+
+        async def generate() -> AsyncIterator[bytes]:
+            task = asyncio.create_task(produce())
+            terminal_seen = False
+            try:
+                while True:
+                    try:
+                        item = await asyncio.wait_for(queue.get(), timeout=15.0)
+                    except TimeoutError:
+                        yield b": keepalive\n\n"
+                        continue
+                    if item is None:
+                        break
+                    yield _sse_frame(item)
+                    if item.type in TERMINAL_EVENT_TYPES:
+                        terminal_seen = True
+                        break
+            except asyncio.CancelledError:
+                if run_id_holder["run_id"] is not None:
+                    await multi_turn_service.cancel(
+                        run_id_holder["run_id"], reason="client_disconnected"
+                    )
+                else:
+                    task.cancel()
+                raise
+            finally:
+                if not task.done() and not terminal_seen:
+                    task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+
+        return StreamingResponse(
+            generate(),
+            media_type="text/event-stream",
+            headers={
+                "Cache-Control": "no-cache, no-transform",
+                "X-Accel-Buffering": "no",
+                "X-Content-Type-Options": "nosniff",
+            },
+        )
+
     @app.get("/")
     async def root() -> FileResponse:
         return FileResponse(_STATIC_DIR / "index.html", media_type="text/html")
@@ -164,6 +314,10 @@ def create_app(
 
 
 async def _read_chat_request(request: Request) -> ChatRequestSchema:
+    return await _read_json_model(request, ChatRequestSchema)
+
+
+async def _read_json_model(request: Request, model_type):  # type: ignore[no-untyped-def]
     content_type = request.headers.get("Content-Type", "").split(";", 1)[0].strip().lower()
     if content_type != "application/json":
         raise RequestInvalidError("请求必须使用 application/json")
@@ -176,12 +330,32 @@ async def _read_chat_request(request: Request) -> ChatRequestSchema:
             raise RequestTooLargeError()
         chunks.append(chunk)
     try:
-        return ChatRequestSchema.model_validate_json(b"".join(chunks))
+        raw = b"".join(chunks)
+        if not raw.strip():
+            raw = b"{}"
+        return model_type.model_validate_json(raw)
     except ValidationError as error:
         first = error.errors()[0]
         location = first.get("loc", ())
         field = str(location[0]) if location and location[0] == "message" else None
         raise RequestInvalidError(field=field) from error
+
+
+class _QueueSink:
+    def __init__(
+        self, queue: asyncio.Queue[AgentEvent | None], holder: dict[str, str | None]
+    ) -> None:
+        self._queue = queue
+        self._holder = holder
+
+    async def publish(self, event: AgentEvent) -> None:
+        self._holder["run_id"] = event.run_id
+        await self._queue.put(event)
+
+
+def _sse_frame(event: AgentEvent) -> bytes:
+    payload = json.dumps(event_to_dict(event), ensure_ascii=False, separators=(",", ":"))
+    return f"event: agent_event\nid: {event.sequence}\ndata: {payload}\n\n".encode()
 
 
 def _allowed_hosts(settings: Settings) -> list[str]:

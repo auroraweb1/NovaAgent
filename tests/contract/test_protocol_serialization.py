@@ -12,6 +12,7 @@ from novaagent.domain.errors import (
 from novaagent.domain.events import (
     AgentEvent,
     ArtifactPayload,
+    ContextPreparedPayload,
     ErrorPayload,
     MessageCompletedPayload,
     MessageStartedPayload,
@@ -114,6 +115,7 @@ def test_unknown_version_type_and_missing_fields_are_rejected() -> None:
     "payload",
     [
         RunStartedPayload("session-1"),
+        ContextPreparedPayload(2, 0, 120),
         MessageStartedPayload("msg-1"),
         TextDeltaPayload("msg-1", "回答"),
         ReasoningSummaryDeltaPayload("先检查输入"),

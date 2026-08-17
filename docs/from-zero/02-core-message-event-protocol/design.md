@@ -20,16 +20,18 @@
 
 项目负责人已完成整体评审并开放编码许可。第 19、20 节中的产品和技术决策已经确认，阶段 02 实现、自动化测试和验收已经完成；实际结果、验证证据和验收决策记录在 `completion-report.md`。
 
+后续范围变更：项目负责人于 2026-08-17 确认 NovaAgent 只使用千问，不再接入豆包，也不建设模型多模态任务。该决策不删除阶段 02 已验收的通用协议类型，但改变其后续用途：图片、音频和文件引用块不再安排模型多模态处理，Provider Port 只用于隔离千问实现和构造测试替身。
+
 本文不改变阶段 01 已验收的产品边界：
 
-- 千问和豆包仍是唯一允许的模型 Provider。
+- 阶段 02 验收时千问和豆包是允许的 Provider；当前产品范围已收敛为仅千问。
 - Web 控制台仍是唯一用户聊天入口。
 - CLI 仍只承担诊断和服务管理，不增加聊天命令。
 - 阶段 02 不发起真实模型请求，不实现聊天页面，也不实现工具执行。
 
 ## 2. 阶段目标
 
-阶段 02 结束时，NovaAgent 应当具备一套可以独立于 FastAPI、HTTPX、千问和豆包 SDK 运行的核心协议，并能够使用假实现完成以下确定性流程：
+阶段 02 结束时，NovaAgent 应当具备一套可以独立于 FastAPI、HTTPX 和千问 SDK 运行的核心协议，并能够使用假实现完成以下确定性流程：
 
 ```text
 原始测试输入
@@ -60,12 +62,12 @@
 
 本阶段不实现以下内容：
 
-- 不接入千问、豆包或任何真实模型 API。
+- 不接入千问或任何真实模型 API。
 - 不增加其他模型 Provider、自定义模型端点或动态 Provider 注册。
 - 不实现 `/chat`、`/sessions`、SSE、WebSocket 或聊天页面。
 - 不实现 Agent 决策循环、工具注册表或任何真实工具。
 - 不实现 SQLite、会话恢复、长期记忆或知识库。
-- 不解析图片、音频和文件内容，不调用多模态模型。
+- 不解析图片、音频和文件内容，不调用多模态模型；后续范围变更已将该能力永久移出路线。
 - 不实现 token 预算、上下文裁剪、重试、限流或模型计费。
 - 不建立第二套终端或第三方消息通道协议。
 - 不承诺保存或展示模型的原始思维链。
@@ -93,7 +95,7 @@ infrastructure implements domain ports
 
 1. `domain` 只使用 Python 标准库类型，不导入 FastAPI、Pydantic、HTTPX、HTTPX2 或供应商 SDK。
 2. Web JSON Schema 和领域对象是两个边界；Web 层使用 Pydantic Schema 校验 HTTP 输入输出，并通过显式转换函数连接标准库领域对象，不把 Pydantic 模型当作领域对象传播。
-3. Provider Adapter 只能返回统一模型输出，不能把 DashScope 或豆包响应对象传入应用层。
+3. Provider Adapter 只能返回统一模型输出，不能把 DashScope 响应对象传入应用层。
 4. Session Store 保存和返回统一 `Message`，不能要求调用方了解数据库行或 JSON 文本。
 5. Tool Port 使用统一定义、调用和结果对象，不能让模型请求参数直接控制运行时资源。
 
@@ -203,7 +205,7 @@ null | boolean | number | string | array | object
 - Web API 在阶段 03 实现时返回 HTTP `422` 和稳定错误码 `message_empty`，字段路径为 `message`。
 - 空白输入不创建 `Message`、`run_id` 或 `AgentEvent`，不写入会话，也不调用模型。
 - 输入校验可以用 `strip()` 判断是否为空，但合法输入进入 TextBlock 时保留原始文本，不自动删除有意义的首尾空格或换行。
-- 包含非文本资源的用户消息是否允许没有文本，由对应文件和多模态阶段另行确认；阶段 02 的最小输入只接受有实际内容的文本。
+- 用户聊天输入必须包含实际文本；后续不开放只有图片、音频、视频或其他非文本资源的模型消息。
 
 ## 7. ContentBlock 设计（PRO-02）
 
@@ -214,9 +216,9 @@ null | boolean | number | string | array | object
 | 领域类型 | JSON `type` | 阶段 02 行为 | 后续阶段 |
 | --- | --- | --- | --- |
 | `TextBlock` | `text` | 完整实现和测试 | 全阶段复用 |
-| `ImageRefBlock` | `image_ref` | 定义结构并验证引用，不读取内容 | 阶段 14 启用模型处理 |
-| `AudioRefBlock` | `audio_ref` | 定义结构并验证引用，不读取内容 | 阶段 14 确认能力 |
-| `FileRefBlock` | `file_ref` | 定义结构并验证引用，不读取内容 | 阶段 07/14 启用上传和预览 |
+| `ImageRefBlock` | `image_ref` | 定义结构并验证引用，不读取内容 | 仅保留协议兼容，不启用模型处理 |
+| `AudioRefBlock` | `audio_ref` | 定义结构并验证引用，不读取内容 | 仅保留协议兼容，不启用模型处理 |
+| `FileRefBlock` | `file_ref` | 定义结构并验证引用，不读取内容 | 可供受控文本文件/工具引用，不启用模型多模态处理 |
 | `ToolCallBlock` | `tool_call` | 定义结构和契约测试，不执行 | 阶段 05 执行 |
 | `ToolResultBlock` | `tool_result` | 定义结构和契约测试，不执行 | 阶段 05 回填 |
 
@@ -411,7 +413,7 @@ async ModelPort.stream(request) -> AsyncIterator[ModelOutput]
 - Port 不暴露 URL、HTTP Header、SDK Request/Response 或供应商异常。
 - 阶段 02 的 Fake Model 根据固定脚本产生输出，不访问网络。
 - 单轮非流式调用可以消费完整流并聚合，避免维护两套响应协议。
-- 真实千问适配器留到阶段 03，豆包适配器留到阶段 14。
+- 真实千问适配器已在阶段 03 实现；原阶段 14 豆包适配器计划已取消。
 
 ### 10.2 EventSinkPort
 

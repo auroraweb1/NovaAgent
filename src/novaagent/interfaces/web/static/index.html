@@ -10,9 +10,9 @@
   <body>
     <main class="shell">
       <header class="hero">
-        <p class="eyebrow">NOVAAGENT · STAGE 03</p>
-        <h1>千问单轮对话</h1>
-        <p class="scope">每次发送都是独立请求，当前不保存会话，也不使用工具或多模态内容。</p>
+        <p class="eyebrow">NOVAAGENT · STAGE 04</p>
+        <h1>千问多轮对话</h1>
+        <p class="scope">当前会话只保存在服务进程内。回答通过 SSE 实时显示；阶段 03 的千问单轮对话兼容 API 仍然保留。</p>
       </header>
 
       <section class="status-card" aria-labelledby="status-title">
@@ -29,38 +29,56 @@
         <input id="web-token" type="password" autocomplete="off" spellcheck="false">
       </section>
 
-      <section class="chat-card" aria-labelledby="chat-title">
-        <div class="chat-heading">
-          <div>
-            <p class="section-label">新请求</p>
-            <h2 id="chat-title">你想问什么？</h2>
+      <section class="workspace" aria-label="多轮聊天工作区">
+        <aside class="session-card">
+          <div class="session-heading">
+            <div>
+              <p class="section-label">会话</p>
+              <h2>本次服务运行</h2>
+            </div>
+            <button id="new-session" class="button secondary compact" type="button">新建</button>
           </div>
-          <span id="character-count" class="character-count">0 / 32,000</span>
-        </div>
+          <p class="memory-notice">会话不会写入磁盘；服务重启后会清空。</p>
+          <div id="session-list" class="session-list" aria-live="polite"></div>
+        </aside>
 
-        <label class="sr-only" for="message">消息内容</label>
-        <textarea
-          id="message"
-          maxlength="32000"
-          rows="9"
-          placeholder="输入消息。空白内容会提示你重新输入。"
-        ></textarea>
+        <section class="chat-card" aria-labelledby="chat-title">
+          <div class="chat-heading">
+            <div>
+              <p class="section-label">当前会话</p>
+              <h2 id="chat-title">新会话</h2>
+            </div>
+            <span id="session-revision" class="character-count">revision 0</span>
+          </div>
 
-        <div class="actions">
-          <button id="send" class="button primary" type="button">发送</button>
-          <button id="clear" class="button secondary" type="button">清空</button>
-          <p id="request-state" class="request-state" aria-live="polite"></p>
-        </div>
+          <div id="messages" class="messages" aria-live="polite"></div>
+
+          <label class="sr-only" for="message">消息内容</label>
+          <textarea
+            id="message"
+            maxlength="32000"
+            rows="6"
+            placeholder="输入消息。空白内容会提示你重新输入。"
+          ></textarea>
+
+          <div class="actions">
+            <button id="send" class="button primary" type="button">发送</button>
+            <button id="stop" class="button secondary" type="button" disabled>停止生成</button>
+            <button id="clear-session" class="button secondary" type="button">清空会话</button>
+            <button id="delete-session" class="button secondary" type="button">关闭会话</button>
+            <span id="character-count" class="character-count">0 / 32,000</span>
+            <p id="request-state" class="request-state" aria-live="polite"></p>
+          </div>
+        </section>
       </section>
 
       <section id="result-card" class="result-card" aria-labelledby="result-title" hidden>
-        <p class="section-label">千问回复</p>
-        <h2 id="result-title">回答</h2>
-        <pre id="answer" class="answer"></pre>
+        <p class="section-label">最近一次完成</p>
+        <h2 id="result-title">回答信息</h2>
         <dl class="metadata">
-          <div><dt>Provider</dt><dd id="meta-provider">—</dd></div>
-          <div><dt>模型</dt><dd id="meta-model">—</dd></div>
-          <div><dt>延迟</dt><dd id="meta-latency">—</dd></div>
+          <div><dt>Provider</dt><dd id="meta-provider">qwen</dd></div>
+          <div><dt>模型</dt><dd id="meta-model">qwen3.8-max</dd></div>
+          <div><dt>估算上下文</dt><dd id="meta-context">—</dd></div>
           <div><dt>输入 Token</dt><dd id="meta-input">—</dd></div>
           <div><dt>输出 Token</dt><dd id="meta-output">—</dd></div>
           <div><dt>合计 Token</dt><dd id="meta-total">—</dd></div>

@@ -20,6 +20,7 @@ from novaagent.domain.errors import (
     ProviderTimeoutError,
     ProviderUnavailableError,
     SecretMissingError,
+    StreamProtocolInvalidError,
 )
 from novaagent.domain.events import TokenUsage
 from novaagent.domain.messages import (
@@ -83,6 +84,12 @@ async def collect(
     return tuple([item async for item in adapter.stream(model_request)])
 
 
+async def collect_live(
+    adapter: QwenModelAdapter, model_request: ModelRequest
+) -> tuple[ModelOutput, ...]:
+    return tuple([item async for item in adapter.stream_live(model_request)])
+
+
 async def no_sleep(_: float) -> None:
     return None
 
@@ -105,6 +112,119 @@ def adapter_for(
         ),
         client,
     )
+
+
+def test_live_stream_maps_deltas_usage_and_request_options() -> None:
+    asyncio.run(_test_live_stream_maps_deltas_usage_and_request_options())
+
+
+async def _test_live_stream_maps_deltas_usage_and_request_options() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        body = b"".join(
+            [
+                b'data: {"choices":[{"delta":{"role":"assistant"}}]}\n\n',
+                b'data: {"choices":[{"delta":{"content":"A"}}]}\n\n',
+                b'data: {"choices":[{"delta":{"content":"B"}}]}\n\n',
+                b'data: {"choices":[],"usage":{"prompt_tokens":2,"completion_tokens":3}}\n\n',
+                b"data: [DONE]\n\n",
+            ]
+        )
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=body)
+
+    adapter, client = adapter_for(handler)
+    try:
+        outputs = await collect_live(adapter, request())
+    finally:
+        await client.aclose()
+    assert [item.text for item in outputs if isinstance(item, TextModelDelta)] == ["A", "B"]
+    usage = [item for item in outputs if isinstance(item, UsageModelOutput)]
+    assert usage[0].usage.total_tokens == 5
+    payload = json.loads(requests[0].content)
+    assert payload["stream"] is True
+    assert payload["stream_options"] == {"include_usage": True}
+    assert payload["enable_thinking"] is False
+
+
+@pytest.mark.parametrize(
+    "body",
+    [
+        b"data: {bad-json}\n\n",
+        b"event: wrong\n\n",
+        b"data: []\n\n",
+        b'data: {"choices":[]}\n\n',
+        b'data: {"choices":[1]}\n\n',
+        b'data: {"choices":[{"delta":1}]}\n\n',
+        b'data: {"choices":[{"delta":{"tool_calls":[{}]}}]}\n\n',
+        b'data: {"choices":[{"delta":{"content":1}}]}\n\n',
+        b'data: {"choices":[{"delta":{"content":"A"}}]}\n\n',
+        b'data: {"choices":[{"delta":{"tool_calls":[]}}]}\n\ndata: [DONE]\n\n',
+    ],
+)
+def test_live_stream_rejects_invalid_or_truncated_protocol(body: bytes) -> None:
+    asyncio.run(_test_live_stream_rejects_invalid_or_truncated_protocol(body))
+
+
+async def _test_live_stream_rejects_invalid_or_truncated_protocol(body: bytes) -> None:
+    def handler(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, headers={"content-type": "text/event-stream"}, content=body)
+
+    adapter, client = adapter_for(handler)
+    try:
+        with pytest.raises((StreamProtocolInvalidError, ProviderResponseInvalidError)):
+            await collect_live(adapter, request())
+    finally:
+        await client.aclose()
+
+
+def test_live_stream_retries_http_503_before_first_delta() -> None:
+    asyncio.run(_test_live_stream_retries_http_503_before_first_delta())
+
+
+async def _test_live_stream_retries_http_503_before_first_delta() -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(503, json={"error": {"code": "busy"}})
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=b'data: {"choices":[{"delta":{"content":"ok"}}]}\n\ndata: [DONE]\n\n',
+        )
+
+    adapter, client = adapter_for(handler)
+    try:
+        outputs = await collect_live(adapter, request())
+    finally:
+        await client.aclose()
+    assert calls == 2
+    assert [item.text for item in outputs if isinstance(item, TextModelDelta)] == ["ok"]
+
+
+def test_live_stream_requires_secret_without_outbound_request() -> None:
+    asyncio.run(_test_live_stream_requires_secret_without_outbound_request())
+
+
+async def _test_live_stream_requires_secret_without_outbound_request() -> None:
+    calls = 0
+
+    def handler(_: httpx.Request) -> httpx.Response:
+        nonlocal calls
+        calls += 1
+        return httpx.Response(500)
+
+    adapter, client = adapter_for(handler, key=None)
+    try:
+        with pytest.raises(SecretMissingError):
+            await collect_live(adapter, request())
+    finally:
+        await client.aclose()
+    assert calls == 0
 
 
 def test_qwen_request_contract_and_success_mapping() -> None:

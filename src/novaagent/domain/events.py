@@ -67,6 +67,25 @@ class MessageStartedPayload:
 
 
 @dataclass(frozen=True, slots=True)
+class ContextPreparedPayload:
+    type: ClassVar[str] = "context_prepared"
+    included_messages: int
+    dropped_messages: int
+    estimated_input_tokens: int
+
+    def __post_init__(self) -> None:
+        for field_name, value in (
+            ("included_messages", self.included_messages),
+            ("dropped_messages", self.dropped_messages),
+            ("estimated_input_tokens", self.estimated_input_tokens),
+        ):
+            if isinstance(value, bool) or value < 0:
+                raise ProtocolValidationError(
+                    f"{field_name} must be non-negative", field=f"payload.{field_name}"
+                )
+
+
+@dataclass(frozen=True, slots=True)
 class TextDeltaPayload:
     type: ClassVar[str] = "text_delta"
     message_id: str
@@ -169,6 +188,7 @@ class RunCancelledPayload:
 
 type AgentEventPayload = (
     RunStartedPayload
+    | ContextPreparedPayload
     | MessageStartedPayload
     | TextDeltaPayload
     | ReasoningSummaryDeltaPayload
@@ -184,6 +204,7 @@ type AgentEventPayload = (
 
 _AGENT_EVENT_PAYLOAD_TYPES = (
     RunStartedPayload,
+    ContextPreparedPayload,
     MessageStartedPayload,
     TextDeltaPayload,
     ReasoningSummaryDeltaPayload,
@@ -238,6 +259,7 @@ class EventSequenceValidator:
     _tool_call_ids: set[str] = field(default_factory=set)
     _error_code: str | None = None
     _terminal_type: str | None = None
+    _context_prepared: bool = False
 
     def add(self, event: AgentEvent) -> None:
         self._validate_common(event)
@@ -277,7 +299,11 @@ class EventSequenceValidator:
 
     def _validate_payload(self, event: AgentEvent) -> None:
         payload = event.payload
-        if isinstance(payload, MessageStartedPayload):
+        if isinstance(payload, ContextPreparedPayload):
+            if self._context_prepared or self._message_ids:
+                raise EventSequenceError("context_prepared must precede message_started")
+            self._context_prepared = True
+        elif isinstance(payload, MessageStartedPayload):
             if payload.message_id in self._message_ids:
                 raise EventSequenceError("message_started cannot repeat a message_id")
             self._message_ids.add(payload.message_id)
