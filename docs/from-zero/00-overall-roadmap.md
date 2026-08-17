@@ -199,7 +199,7 @@ Bootstrap 负责：
 
 ### 5.4 项目目录
 
-项目根目录已经确定为 `/Users/jiaojie/NovaAgent`。源码包名、依赖和各模块的最终边界仍由阶段 01 的设计确认；当前目录描述作为建设起点：
+项目根目录确定为 `/Users/jiaojie/NovaAgent`。源码包名、基础依赖和工程分层已经在阶段 01 确认并验收；后续业务模块边界由对应阶段设计逐步确认。当前目录状态如下：
 
 ```text
 NovaAgent/
@@ -242,12 +242,14 @@ NovaAgent/
     └── from-zero/
         ├── 00-overall-roadmap.md
         ├── legacy-reference-progress.md
-        └── 01-engineering-foundation/
-            ├── design.md
-            └── completion-report.md
+        ├── 01-engineering-foundation/
+        │   ├── design.md
+        │   └── completion-report.md
+        └── 02-core-message-event-protocol/
+            └── design.md
 ```
 
-阶段目录只在准备进入对应阶段时创建。`01-engineering-foundation/` 已创建并包含阶段 01 的设计文档、实现代码和完成报告；阶段状态以第 12 节和进度表为准。
+阶段目录只在准备进入对应阶段时创建。`01-engineering-foundation/` 和 `02-core-message-event-protocol/` 均已完成并通过验收。阶段状态以第 12 节和进度表为准。
 
 ## 6. 核心执行流程
 
@@ -297,7 +299,7 @@ Agent 级：身份、工作空间、规则、技能、长期记忆
 | 阶段 | 建设主题 | 阶段结束时可演示的结果 | 阶段设计文档 |
 | --- | --- | --- | --- |
 | 01 | 产品边界与工程地基 | 项目可安装、可测试、可启动，并有诊断命令 | `01-engineering-foundation/design.md` |
-| 02 | 核心消息与事件协议 | 使用假实现走通消息输入和事件输出 | `02-core-protocol/design.md` |
+| 02 | 核心消息与事件协议 | 使用假实现走通消息输入和事件输出 | `02-core-message-event-protocol/design.md` |
 | 03 | 千问接入与 Web 单轮聊天 | 在最小 Web 页面向千问提问并获得回复 | `03-model-chat/design.md` |
 | 04 | Web 流式输出与多轮会话 | 在浏览器实时显示回复，并连续对话 | `04-streaming-session/design.md` |
 | 05 | Agent 决策循环 | 模型能够请求工具、读取结果并继续回答 | `05-agent-loop/design.md` |
@@ -871,6 +873,8 @@ Agent 安全抓取指定网页，通过一个 MCP 工具处理信息，并创建
 
 任何一项缺失，下一阶段保持“未开始”。
 
+阶段 01 的验收采用一次性组合证据决策：GitHub Actions 提供干净安装和质量检查证据，此前真实 Web 进程运行记录提供启动、端点访问和停止证据。项目负责人确认该组合满足阶段 01 演示门禁；这项决策已记录在阶段 01 完成报告中，不自动豁免后续阶段的演示要求。
+
 ## 10. 阶段设计文档模板
 
 每个阶段创建独立目录，至少包含 `design.md`。阶段完成时增加 `completion-report.md`。
@@ -939,7 +943,7 @@ docs/from-zero/
 ├── 01-engineering-foundation/
 │   ├── design.md
 │   └── completion-report.md
-├── 02-core-protocol/
+├── 02-core-message-event-protocol/
 │   ├── design.md
 │   └── completion-report.md
 └── ...
@@ -961,13 +965,13 @@ docs/from-zero/
 | 已完成 | 八项门禁全部通过 |
 | 暂停 | 因明确原因暂停，原因已记录 |
 
-初始状态：
+当前状态（2026-08-17）：
 
 | 阶段 | 状态 | 说明 |
 | --- | --- | --- |
-| 01 产品边界与工程地基 | 实现中 | 设计已确认，基础工程和验证命令已建立 |
-| 02 核心消息与事件协议 | 未开始 | 必须等待阶段 01 完成 |
-| 03 千问接入与 Web 单轮聊天 | 未开始 | 必须等待阶段 02 完成 |
+| 01 产品边界与工程地基 | 已完成 | 已通过组合证据验收，详见阶段 01 完成报告 |
+| 02 核心消息与事件协议 | 已完成 | 自动化门禁和测试驱动最小演示均已通过负责人验收 |
+| 03 千问接入与 Web 单轮聊天 | 未开始 | 前置阶段已完成，可以进入设计 |
 | 04 Web 流式输出与多轮会话 | 未开始 | 必须等待阶段 03 完成 |
 | 05 Agent 决策循环 | 未开始 | 必须等待阶段 04 完成 |
 | 06 安全的本地工具 | 未开始 | 必须等待阶段 05 完成 |

@@ -20,6 +20,7 @@ novaagent = "novaagent.interfaces.management_cli:main"
 
 [dependency-groups]
 dev = [
+  "httpx2>=2,<3",
   "mypy>=1.15,<2",
   "pytest>=8.3,<9",
   "pytest-cov>=6,<7",
@@ -32,6 +33,9 @@ packages = ["src/novaagent"]
 [tool.pytest.ini_options]
 addopts = "--strict-markers --strict-config"
 testpaths = ["tests"]
+filterwarnings = [
+  "error::starlette.exceptions.StarletteDeprecationWarning",
+]
 
 [tool.ruff]
 line-length = 100
@@ -52,4 +56,3 @@ pretty = true
 show_error_codes = true
 warn_redundant_casts = true
 warn_unused_ignores = true
-

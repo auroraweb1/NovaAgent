@@ -47,3 +47,50 @@ class WebBindError(NovaAgentError):
 class DependencyUnavailableError(NovaAgentError):
     def __init__(self, message: str) -> None:
         super().__init__(message=message, code="dependency_unavailable")
+
+
+class ProtocolValidationError(NovaAgentError):
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message=message, code="protocol_invalid", field=field)
+
+
+class UnsupportedProtocolVersionError(NovaAgentError):
+    def __init__(self, version: str) -> None:
+        super().__init__(
+            message=f"Protocol version '{version}' is not supported",
+            code="protocol_version_unsupported",
+            field="protocol_version",
+        )
+
+
+class UnsupportedContentTypeError(NovaAgentError):
+    def __init__(self, content_type: str) -> None:
+        super().__init__(
+            message=f"Content type '{content_type}' is not supported",
+            code="content_type_unsupported",
+            field="type",
+        )
+
+
+class EventSequenceError(NovaAgentError):
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message=message, code="event_sequence_invalid", field=field)
+
+
+class MessageRoleError(NovaAgentError):
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message=message, code="message_role_invalid", field=field)
+
+
+class ToolCallError(NovaAgentError):
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message=message, code="tool_call_invalid", field=field)
+
+
+class EmptyMessageError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="请输入内容后再发送",
+            code="message_empty",
+            field="message",
+        )

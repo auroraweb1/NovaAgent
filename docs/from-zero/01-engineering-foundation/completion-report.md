@@ -1,8 +1,10 @@
 # 阶段 01 完成报告：产品边界与工程地基
 
-> 状态：待验收
+> 状态：已验收
 >
 > 创建日期：2026-08-17
+>
+> 验收日期：2026-08-17
 >
 > 设计文档：[design.md](./design.md)
 >
@@ -10,9 +12,9 @@
 
 ## 1. 报告目的
 
-本文记录阶段 01 的实际实现、自动化测试、运行演示、设计偏差和遗留事项。报告用于判断 NovaAgent 是否具备进入阶段 02“核心消息与事件协议”的条件。
+本文记录阶段 01 的实际实现、自动化测试、运行演示、设计偏差和验收决策。阶段 01 已通过验收，NovaAgent 已具备进入阶段 02“核心消息与事件协议”设计的条件。
 
-本报告不代表已经进入阶段 02，也不代表聊天、模型调用、工具、会话或完整 Web 控制台已经完成。阶段 01 只建立这些后续能力必须依赖的工程基础。
+本报告不代表聊天、模型调用、工具、会话或完整 Web 控制台已经完成。阶段 01 只建立这些后续能力必须依赖的工程基础；阶段 01 验收时，阶段 02 仅获准进入设计。该设计门禁后来已经按流程完成，后续状态以阶段 02 文档为准。
 
 ## 2. 阶段结论
 
@@ -30,8 +32,9 @@
 关键验收状态如下：
 
 1. 核心配置模块的覆盖率目标已经达到：配置加载器、配置模型和路径模块分别为 98%、97% 和 100%；当前全项目总覆盖率为 85%。
-2. CI workflow 已实现并通过等价的本地命令验证，首次推送后仍需确认 GitHub Actions 远端运行结果。
-3. 测试使用的 FastAPI/Starlette `TestClient` 发出一个上游弃用警告，需要在后续依赖升级或测试客户端方案确定后处理。
+2. CI workflow 已实现并通过等价的本地命令验证，GitHub Actions 远端运行结果已确认通过。
+3. Starlette `TestClient` 已使用官方推荐的 `httpx2` 开发依赖，原弃用警告已经消除，并配置为再次出现时测试失败。
+4. 项目负责人已确认采用组合证据完成验收，阶段 01 结论为“通过”。
 
 ## 3. 已交付内容
 
@@ -46,7 +49,7 @@
 | 统一本地验证脚本 | [`scripts/verify.sh`](../../../scripts/verify.sh) | 已完成 |
 | GitHub Actions CI | [`.github/workflows/ci.yml`](../../../.github/workflows/ci.yml) | 已完成 |
 
-项目要求 Python `>=3.12,<3.14`，使用 `uv` 管理环境，运行时和开发依赖分别包含 FastAPI、Uvicorn、Pydantic、HTTPX、Pytest、Ruff、Mypy 和覆盖率工具。
+项目要求 Python `>=3.12,<3.14`，使用 `uv` 管理环境；运行时依赖包含 FastAPI、Uvicorn、Pydantic 和 HTTPX，开发依赖包含 HTTPX2、Pytest、Ruff、Mypy 和覆盖率工具。HTTPX2 仅供 Starlette `TestClient` 使用，不替换后续 Provider 使用的 HTTPX。
 
 ### 3.2 配置和 Provider 边界
 
@@ -153,7 +156,7 @@ UV_CACHE_DIR=/private/tmp/novaagent-uv-cache uv sync --all-groups --python /User
 UV_CACHE_DIR=/private/tmp/novaagent-uv-cache uv run pytest
 ```
 
-结果：`24 passed`。测试过程中出现一个 Starlette/TestClient 上游弃用警告，无测试失败。
+结果：`24 passed`，无 Starlette/TestClient 弃用警告。该类警告已配置为测试错误，若后续依赖升级导致警告再次出现，测试会明确失败。
 
 ```text
 UV_CACHE_DIR=/private/tmp/novaagent-uv-cache uv run ruff check .
@@ -231,8 +234,8 @@ curl -sS http://127.0.0.1:8765/api/v1/diagnostics
 | --- | --- | --- | --- |
 | Provider 目录 | 设计示例使用 `infrastructure/providers/` | 阶段 01保留 Provider 占位包，实际适配器未创建 | 无影响，真实适配器在阶段 03/14 创建 |
 | Web 前端 | 阶段 01只要求占位页 | 当前根路径返回 JSON 占位信息，尚未创建 HTML 页面 | 符合“不实现完整控制台”的阶段边界 |
-| 测试客户端 | 设计要求 Web 集成测试 | 使用 FastAPI TestClient 验证路由 | 当前有上游弃用警告，后续需处理 |
-| CI | 总体路线要求 CI 和本地验证 | 已有 `scripts/verify.sh` 和 GitHub Actions workflow | 已满足；首次推送后确认 GitHub Actions 运行结果 |
+| 测试客户端 | 设计要求 Web 集成测试 | 使用 FastAPI TestClient 和仅用于开发环境的 HTTPX2 验证路由 | 已消除弃用警告，并通过 Pytest 严格检查防止复发 |
+| CI | 总体路线要求 CI 和本地验证 | 已有 `scripts/verify.sh` 和 GitHub Actions workflow | 已满足；远端 GitHub Actions 已确认通过 |
 | 覆盖率 | 核心配置逻辑目标不低于 90% | 配置加载器 98%、配置模型 97%、路径模块 100% | 已满足；全项目总覆盖率为 85% |
 
 以上偏差没有扩大产品范围，也没有引入额外模型或用户通道。
@@ -247,19 +250,27 @@ curl -sS http://127.0.0.1:8765/api/v1/diagnostics
 - CLI 不提供终端聊天。
 - 未实现第三方即时通信渠道、桌面客户端、Shell、文件工具、浏览器和 MCP。
 
-## 7. 待完成事项
+## 7. 验收决策与遗留事项
 
-正式把阶段 01 标记为“已验收”前，需要完成：
+### 7.1 组合证据验收决策
+
+项目负责人确认豁免单次整合式干净环境演示。
+
+干净安装和质量检查由 GitHub Actions 提供证据；真实 Web 启停和端点访问由此前本地运行记录提供证据。
+
+该豁免不代表相关验证未执行，而是采用组合证据完成验收。
+
+### 7.2 验收项处理结果
 
 1. 已完成配置加载器、配置模型和路径边界的失败路径测试，核心模块覆盖率达到 90% 以上。
-2. 已添加 CI workflow，执行锁定依赖安装、Pytest 与覆盖率、Ruff lint、Ruff 格式检查、Mypy 和 `doctor`。
-3. 决定如何处理 Starlette/TestClient 的弃用警告，并更新依赖或测试客户端实现。
-4. 运行一次干净环境演示并保存完整命令输出，作为最终完成报告附件或补充记录。
-5. 由项目负责人确认本报告中的设计偏差和遗留项后，更新阶段状态。
+2. 已添加 CI workflow，执行锁定依赖安装、Pytest 与覆盖率、Ruff lint、Ruff 格式检查、Mypy 和 `doctor`；远端运行已通过。
+3. 已添加 Starlette 官方推荐的 HTTPX2 开发依赖，并将 `StarletteDeprecationWarning` 配置为测试错误。
+4. 原“运行一次干净环境演示”验收项已经负责人确认，改用 GitHub Actions 干净环境结果和本地真实 Web 运行记录组成的组合证据替代。
+5. 项目负责人已确认本报告中的设计偏差和验收决策，阶段 01 不再存在阻塞阶段 02 设计的遗留事项。
 
 ## 8. 下一阶段
 
-阶段 01 完成正式验收后，进入阶段 02：核心消息与事件协议。阶段 02 的设计应在本阶段已建立的配置、Web 生命周期、错误、日志和依赖边界之上，定义：
+阶段 01 完成正式验收时，阶段 02“核心消息与事件协议”的下一步是进入设计。该设计需要在本阶段已建立的配置、Web 生命周期、错误、日志和依赖边界之上定义：
 
 - `Message`、`ContentBlock` 和角色语义。
 - `AgentEvent` 的类型、顺序和终止语义。
@@ -267,4 +278,10 @@ curl -sS http://127.0.0.1:8765/api/v1/diagnostics
 - Web JSON 序列化和版本字段。
 - 假模型和内存事件接收器的契约测试。
 
-阶段 02 不应重新设计阶段 01 已确认的 Provider 白名单、Web 唯一入口或管理 CLI 边界。
+阶段 02 不应重新设计阶段 01 已确认的 Provider 白名单、Web 唯一入口或管理 CLI 边界。“设计确认前不实现”的门禁已于 2026-08-17 由项目负责人解除；实际实现和验证结果见阶段 02 完成报告。
+
+## 9. 阶段结论
+
+阶段结论：**通过**。
+
+阶段 01 的工程、配置、测试、CI、诊断和真实 Web 生命周期证据已经满足本阶段目标。项目负责人确认以组合证据替代单次整合式干净环境演示，阶段 01 状态更新为“已验收”，允许阶段 02 进入设计。
