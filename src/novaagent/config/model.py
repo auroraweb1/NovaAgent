@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 from typing import Literal
 
@@ -42,10 +43,34 @@ class WebSettings(BaseModel):
         return self
 
 
+QWEN_MODEL_PATTERN = re.compile(r"^qwen[a-z0-9._-]{0,124}$")
+
+
 class ProviderEntry(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     model: str = ""
+
+
+class QwenProviderSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    model: str = "qwen3.8-max"
+    temperature: float = Field(default=0.7, ge=0, le=2)
+    max_output_tokens: int = Field(default=2048, ge=1, le=32768)
+    timeout_seconds: float = Field(default=60, ge=1, le=300)
+    max_retries: int = Field(default=1, ge=0, le=2)
+    max_concurrency: int = Field(default=4, ge=1, le=32)
+
+    @field_validator("model")
+    @classmethod
+    def validate_model(cls, value: str) -> str:
+        if not QWEN_MODEL_PATTERN.fullmatch(value):
+            raise ValueError(
+                "qwen model must start with 'qwen' and contain only lowercase letters, "
+                "numbers, dots, underscores, and hyphens"
+            )
+        return value
 
 
 class ProvidersSettings(BaseModel):
@@ -53,7 +78,7 @@ class ProvidersSettings(BaseModel):
 
     default: ProviderName = "qwen"
     enabled: tuple[ProviderName, ...] = Field(default_factory=default_enabled_providers)
-    qwen: ProviderEntry = Field(default_factory=ProviderEntry)
+    qwen: QwenProviderSettings = Field(default_factory=QwenProviderSettings)
     doubao: ProviderEntry = Field(default_factory=ProviderEntry)
 
     @field_validator("enabled")
@@ -72,6 +97,12 @@ class ProvidersSettings(BaseModel):
     def validate_default(self) -> ProvidersSettings:
         if self.default not in self.enabled:
             raise ValueError("providers.default must be included in providers.enabled")
+        if self.default != "qwen":
+            raise ValueError(
+                "providers.default must be qwen until the doubao adapter is implemented"
+            )
+        if "qwen" not in self.enabled:
+            raise ValueError("providers.enabled must include qwen during stage 03")
         return self
 
 

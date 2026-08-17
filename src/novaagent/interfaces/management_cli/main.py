@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import sys
 import urllib.error
 import urllib.request
@@ -13,6 +12,7 @@ import uvicorn
 from novaagent import __version__
 from novaagent.bootstrap.container import build_app, build_settings
 from novaagent.config.loader import runtime_paths
+from novaagent.config.secrets import load_runtime_environment
 from novaagent.domain.errors import NovaAgentError
 from novaagent.domain.providers import PROVIDER_SECRET_ENV
 
@@ -39,6 +39,7 @@ def _build_parser() -> argparse.ArgumentParser:
         command = subparsers.add_parser(name)
         command.add_argument("--environment", choices=("local", "test", "production"))
         command.add_argument("--config-file", type=Path)
+        command.add_argument("--env-file", type=Path)
     status = subparsers.add_parser("status")
     status.add_argument("--url", default="http://127.0.0.1:8765/health/ready")
     return parser
@@ -56,13 +57,19 @@ def _dispatch(args: argparse.Namespace) -> int:
 
 
 def _doctor(args: argparse.Namespace) -> int:
-    settings = build_settings(config_file=args.config_file, environment=args.environment)
+    env_file = getattr(args, "env_file", None)
+    settings = build_settings(
+        config_file=args.config_file,
+        environment=args.environment,
+        env_file=env_file,
+    )
     paths = runtime_paths(settings)
     paths.ensure_directories()
+    environment = load_runtime_environment(env_file=env_file)
     provider_details = {
         name: {
             "enabled": name in settings.providers.enabled,
-            "secret_present": bool(os.environ.get(PROVIDER_SECRET_ENV[name])),
+            "secret_present": bool(environment.get(PROVIDER_SECRET_ENV[name])),
         }
         for name in ("qwen", "doubao")
     }
@@ -83,8 +90,13 @@ def _doctor(args: argparse.Namespace) -> int:
 
 
 def _serve(args: argparse.Namespace) -> int:
-    settings = build_settings(config_file=args.config_file, environment=args.environment)
-    app = build_app(settings)
+    env_file = getattr(args, "env_file", None)
+    settings = build_settings(
+        config_file=args.config_file,
+        environment=args.environment,
+        env_file=env_file,
+    )
+    app = build_app(settings, env_file=env_file)
     uvicorn.run(app, host=settings.web.host, port=settings.web.port, log_config=None)
     return 0
 

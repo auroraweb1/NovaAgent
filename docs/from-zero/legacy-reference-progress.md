@@ -93,8 +93,8 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | 01 | 产品边界与工程地基 | 已确认 | 已实现 | 已测试 | 已验收 | FND-01 ～ FND-10 |
 | 02 | 核心消息与事件协议 | 已确认 | 已实现 | 已测试 | 已验收 | PRO-01 ～ PRO-08 |
-| 03 | 千问接入与 Web 单轮聊天 | 未开始 | 未开始 | 未开始 | 未开始 | MOD-01 ～ MOD-05 |
-| 04 | Web 流式输出与多轮会话 | 未开始 | 未开始 | 未开始 | 未开始 | SES-01 ～ SES-07 |
+| 03 | 千问接入与 Web 单轮聊天 | 已确认 | 已实现 | 已测试 | 已验收 | MOD-01 ～ MOD-05、WEB-02、WEB-04、ECO-01、ECO-05 |
+| 04 | Web 流式输出与多轮会话 | 设计中 | 未开始 | 未开始 | 未开始 | SES-01 ～ SES-06、WEB-02 ～ WEB-04、ECO-05；SES-07 属于阶段 10 |
 | 05 | Agent 决策循环 | 未开始 | 未开始 | 未开始 | 未开始 | AGT-01 ～ AGT-08 |
 | 06 | 安全的本地工具 | 未开始 | 未开始 | 未开始 | 未开始 | TOL-01 ～ TOL-12 |
 | 07 | Web 控制台完善 | 未开始 | 未开始 | 未开始 | 未开始 | WEB-01 ～ WEB-09 |
@@ -141,22 +141,22 @@
 
 | 编号 | 新系统能力 | 阶段 | 当前项目参考 | 初步处理方式 | 设计 | 实现 | 测试 | 验收 | 兼容与备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| MOD-01 | 千问 / DashScope 文本模型 | 03 | `models/dashscope/`、OpenAI-compatible 请求处理 | 选择性复用 + 新 Port 适配 | 未开始 | 未开始 | 未开始 | 未开始 | 作为首个真实 Provider |
-| MOD-02 | 模型错误标准化 | 03 | 各 Provider 错误处理、fatal error tests | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 统一鉴权、限流、超时、输入和服务错误 |
-| MOD-03 | 模型使用量与耗时 | 03 | 现有 usage 处理 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 为可观测性和成本控制提供统一字段 |
-| MOD-04 | 千问与豆包能力声明 | 03、14 | `models/reasoning_capabilities.py` | 选择性复用 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 03 定义千问最小能力，阶段 14 加入豆包并完善多模态声明 |
-| MOD-05 | Provider 白名单与配置校验 | 03、14 | `models/custom_provider.py`、旧 Provider 配置 | 全新设计 | 未开始 | 未开始 | 未开始 | 未开始 | 只接受千问和豆包，拒绝自定义端点及其他 Provider |
+| MOD-01 | 千问 / DashScope 文本模型 | 03 | `models/dashscope/`、OpenAI-compatible 请求处理 | 选择性复用 + 新 Port 适配 | 已确认 | 已实现 | 已测试 | 已验收 | 默认使用 `qwen3.8-max`，固定官方 URL，通过 HTTPX Adapter 接入 |
+| MOD-02 | 模型错误标准化 | 03 | 各 Provider 错误处理、fatal error tests | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 已覆盖鉴权、限流、超时、输入、服务和响应错误 |
+| MOD-03 | 模型使用量与耗时 | 03 | 现有 usage 处理 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | usage 可缺失，合计由 NovaAgent 计算，耗时使用单调时钟 |
+| MOD-04 | 千问与豆包能力声明 | 03、14 | `models/reasoning_capabilities.py` | 选择性复用 | 已确认 | 已实现 | 已测试 | 阶段 03 子范围已验收 | 阶段 03 千问最小文本能力已验收，阶段 14 再加入豆包和多模态能力 |
+| MOD-05 | Provider 白名单与配置校验 | 03、14 | `models/custom_provider.py`、旧 Provider 配置 | 全新设计 | 已确认 | 已实现 | 已测试 | 阶段 03 子范围已验收 | 只接受千问和豆包；拒绝自定义端点，千问密钥来自服务端环境或 Git 忽略的本地 `.env` 文件 |
 
 ### 6.4 流式输出与会话
 
 | 编号 | 新系统能力 | 阶段 | 当前项目参考 | 初步处理方式 | 设计 | 实现 | 测试 | 验收 | 兼容与备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| SES-01 | 模型流式输出 | 04 | `agent/protocol/agent_stream.py`、Provider stream | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 保证流式与非流式最终文本一致 |
-| SES-02 | 会话创建与选择 | 04 | Web 会话 API、session manager | 全新设计 + 参考行为 | 未开始 | 未开始 | 未开始 | 未开始 | 第一版使用内存存储 |
-| SES-03 | 多轮消息历史 | 04 | Agent `messages`、Session Store | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 明确消息顺序和并发规则 |
-| SES-04 | 多会话隔离 | 04 | session isolation tests | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 作为后续多 Agent 隔离基础 |
-| SES-05 | 取消与客户端断开 | 04 | cancel registry、Web 取消 | 选择性复用 + 新状态机 | 未开始 | 未开始 | 未开始 | 未开始 | 取消必须传播至模型和工具 |
-| SES-06 | 上下文窗口与 token 预算 | 04、10 | Agent context trimming、summarizer | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 04 建接口，阶段 10 完善摘要 |
+| SES-01 | 模型流式输出 | 04 | `agent/protocol/agent_stream.py`、Provider stream | 参考行为后重写 | 设计中 | 未开始 | 未开始 | 未开始 | 保证流式与非流式最终文本一致 |
+| SES-02 | 会话创建与选择 | 04 | Web 会话 API、session manager | 全新设计 + 参考行为 | 设计中 | 未开始 | 未开始 | 未开始 | 第一版使用内存存储 |
+| SES-03 | 多轮消息历史 | 04 | Agent `messages`、Session Store | 参考行为后重写 | 设计中 | 未开始 | 未开始 | 未开始 | 明确消息顺序和并发规则 |
+| SES-04 | 多会话隔离 | 04 | session isolation tests | 参考行为后重写 | 设计中 | 未开始 | 未开始 | 未开始 | 作为后续多 Agent 隔离基础 |
+| SES-05 | 取消与客户端断开 | 04 | cancel registry、Web 取消 | 选择性复用 + 新状态机 | 设计中 | 未开始 | 未开始 | 未开始 | 取消必须传播至模型调用并释放资源 |
+| SES-06 | 上下文窗口与 token 预算 | 04、10 | Agent context trimming、summarizer | 参考行为后重写 | 设计中 | 未开始 | 未开始 | 未开始 | 阶段 04 建接口，阶段 10 完善摘要 |
 | SES-07 | 会话持久化恢复 | 10 | `agent/memory/conversation_store.py` | 数据导入 + 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 不直接继承旧表作为领域模型 |
 
 ### 6.5 Agent 决策与执行
@@ -194,13 +194,13 @@
 | 编号 | 新系统能力 | 阶段 | 当前项目参考 | 初步处理方式 | 设计 | 实现 | 测试 | 验收 | 兼容与备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | WEB-01 | 健康检查与运行状态 API | 01、07 | `channel/web/web_channel.py` | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 01 建最小端点，阶段 07 完善运行状态 |
-| WEB-02 | 单轮与流式聊天 API | 03、04、07 | Web CHAT/SSE 协议、ChatService | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | Web 是唯一聊天入口，直接消费统一 AgentEvent |
-| WEB-03 | 会话管理 API | 04、07 | 当前 Web 会话接口 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 04 建最小会话 API，阶段 07 完善管理能力；不直接操作数据库对象 |
-| WEB-04 | Web 聊天界面 | 03、04、07 | `channel/web/chat.html`、静态 JS/CSS | 选择性参考，界面重新建设 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 03 建单轮最小页面，阶段 04 加流式会话，阶段 07 完善控制台 |
+| WEB-02 | 单轮与流式聊天 API | 03、04、07 | Web CHAT/SSE 协议、ChatService | 参考行为后重写 | 阶段 03 已确认；阶段 04 设计中 | 阶段 03 已实现 | 阶段 03 已测试 | 阶段 03 已验收 | 阶段 04 增加 SSE 流式 API，阶段 07 再完善管理能力 |
+| WEB-03 | 会话管理 API | 04、07 | 当前 Web 会话接口 | 参考行为后重写 | 设计中 | 未开始 | 未开始 | 未开始 | 阶段 04 建最小会话 API，阶段 07 完善管理能力；不直接操作数据库对象 |
+| WEB-04 | Web 聊天界面 | 03、04、07 | `channel/web/chat.html`、静态 JS/CSS | 选择性参考，界面重新建设 | 阶段 03 已确认；阶段 04 设计中 | 阶段 03 已实现 | 阶段 03 已测试 | 阶段 03 已验收 | 阶段 04 加流式会话，阶段 07 完善控制台 |
 | WEB-05 | Markdown 与代码渲染 | 07 | 本地 vendor 静态资源 | 适配复用或替代 | 未开始 | 未开始 | 未开始 | 未开始 | 保持离线和安全渲染能力 |
 | WEB-06 | 工具、推理和产物卡片 | 07 | `console.js`、`workspace.js` | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 以事件协议为唯一数据源 |
 | WEB-07 | 文件上传与预览 | 07、14 | Web 文件缓存和工作区预览 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 上传边界和内容扫描需单独设计 |
-| WEB-08 | Web 认证与配置保护 | 07 | `web_password`、现有安全检查 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 认证应覆盖所有管理 API |
+| WEB-08 | Web 认证与配置保护 | 07 | `web_password`、现有安全检查 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 认证应覆盖所有管理 API；Web 永不管理 Provider API Key，只显示配置状态 |
 | WEB-09 | 知识、记忆、Skills 和任务页面 | 09～12 | 当前控制台对应页面 | 待各阶段设计 | 未开始 | 未开始 | 未开始 | 未开始 | 随后端能力逐步加入，不在阶段 07 一次完成 |
 
 ### 6.8 工作空间与提示词
@@ -293,11 +293,11 @@
 
 | 编号 | 新系统能力 | 阶段 | 当前项目参考 | 初步处理方式 | 设计 | 实现 | 测试 | 验收 | 兼容与备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ECO-01 | 千问 / DashScope Provider | 03、14 | `models/dashscope/` | 适配复用 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 03 接入文本，阶段 14 完善能力声明和多模态 |
+| ECO-01 | 千问 / DashScope Provider | 03、14 | `models/dashscope/` | 适配复用 | 已确认 | 已实现 | 已测试 | 阶段 03 子范围已验收 | 阶段 03 文本接入已验收，阶段 14 完善能力声明和多模态 |
 | ECO-02 | 豆包 Provider | 14 | `models/doubao/` | 适配复用 | 未开始 | 未开始 | 未开始 | 未开始 | 与千问共享 Model Port，供应商差异留在适配器内 |
 | ECO-03 | 千问与豆包 Provider 契约 | 14 | 各 Provider 测试和错误处理 | 参考场景后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 覆盖文本、流式、工具调用、推理事件和能力拒绝 |
 | ECO-04 | 其他模型 Provider | — | Claude、Gemini、DeepSeek、GLM、Kimi、MiniMax、OpenAI、自定义 Provider | 明确废弃 | 不适用 | 明确废弃 | 不适用 | 不适用 | 不迁移实现和配置；NovaAgent 只允许千问与豆包 |
-| ECO-05 | Web 控制台唯一用户通道 | 03、04、07 | `channel/web/`、Web API 与前端 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | HTTP API、SSE/WebSocket 与浏览器页面共同组成唯一聊天入口 |
+| ECO-05 | Web 控制台唯一用户通道 | 03、04、07 | `channel/web/`、Web API 与前端 | 参考行为后重写 | 阶段 03 已确认；阶段 04 设计中 | 阶段 03 已实现 | 阶段 03 已测试 | 阶段 03 已验收 | 阶段 04 增加流式多轮交互，阶段 07 再完善控制台 |
 | ECO-06 | 其他用户通道 | — | Terminal、飞书、钉钉、Telegram、Discord、Slack、微信、QQ、桌面端 | 明确废弃 | 不适用 | 明确废弃 | 不适用 | 不适用 | 不建设 Channel Adapter 体系，不迁移对应 SDK 和配置 |
 | ECO-07 | Web 图片与文件消息 | 14 | Web 附件、文件缓存、Vision | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 使用统一 ContentBlock，并保持 Web 用户、会话和附件归属 |
 | ECO-08 | 千问与豆包多模态能力 | 14 | DashScope、Doubao、`voice/`、Vision 相关实现 | 选择性复用 | 未开始 | 未开始 | 未开始 | 未开始 | 只启用两家官方服务实际支持且验收通过的能力 |
@@ -367,6 +367,7 @@
 | 阶段 | 完成报告 | 主要差异摘要 | 兼容影响 | 日期 |
 | --- | --- | --- | --- | --- |
 | 02 | `02-core-message-event-protocol/completion-report.md` | 使用标准库不可变领域对象、显式事件状态机和 Web Pydantic 边界全新实现 | 不继承 CowAgent 字典式消息或供应商对象 | 2026-08-17 |
+| 03 | `03-qwen-web-single-turn-chat/completion-report.md` | 使用固定官方 HTTP 端点、单轮应用服务和无框架静态 Web 页面实现；Mapper 与重试策略合并在小型 Adapter 内 | 不继承 CowAgent SDK 全局状态、会话路径或动态 Provider | 2026-08-17 |
 
 ## 10. 验证证据索引
 
@@ -376,9 +377,10 @@
 | --- | --- | --- | --- | --- |
 | FND-01 ～ FND-10 | `scripts/verify.sh`、GitHub Actions CI | CLI 诊断、真实 Web 启停和健康端点；单次整合式干净环境演示由负责人确认采用组合证据替代 | 已验收 | `01-engineering-foundation/completion-report.md` |
 | PRO-01 ～ PRO-08 | Pytest、覆盖率、Ruff、Mypy、`novaagent doctor` | Fake Model → AgentEvent → In-memory Event Sink → 最终 Message → JSON 往返 | 已验收 | `02-core-message-event-protocol/completion-report.md` |
+| MOD-01 ～ MOD-05、WEB-02、WEB-04、ECO-01、ECO-05 | Pytest、覆盖率、Ruff、Mypy、`novaagent doctor`、真实 Web 演示 | Web → SingleTurnChatService → Qwen Adapter → MockTransport/真实千问 → AgentEvent → Web JSON；负责人确认回答、模型元信息、usage、输入校验、单轮和安全边界正常 | 已验收 | `03-qwen-web-single-turn-chat/completion-report.md` |
 
 ## 11. 当前结论
 
-阶段 01“产品边界与工程地基”和阶段 02“核心消息与事件协议”均已完成验收，FND-01 ～ FND-10 与 PRO-01 ～ PRO-08 全部标记为“已验收”。NovaAgent 的产品范围保持不变：模型 Provider 只保留千问和豆包，用户聊天通道只保留 Web 控制台。
+阶段 01“产品边界与工程地基”、阶段 02“核心消息与事件协议”和阶段 03“千问接入与 Web 单轮聊天”均已完成验收。阶段 03 的自动化门禁、MockTransport 闭环和真实千问 Web 演示均已通过，MOD-01 ～ MOD-05、WEB-02、WEB-04、ECO-01 和 ECO-05 的阶段 03 子范围标记为“已验收”。
 
-下一步可以创建阶段 03“千问接入与 Web 单轮聊天”的设计文档。阶段 03 设计确认前不开始真实模型或聊天入口编码。NovaAgent 的工程根目录为 `/Users/jiaojie/NovaAgent`。
+阶段 04“Web 流式输出与多轮会话”已经进入设计，当前只创建和确认设计文档，不开始业务代码实现。NovaAgent 的产品范围保持不变：模型 Provider 只保留千问和豆包，用户聊天通道只保留 Web 控制台。工程根目录为 `/Users/jiaojie/NovaAgent`。

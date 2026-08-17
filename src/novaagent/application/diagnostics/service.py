@@ -3,6 +3,7 @@ from __future__ import annotations
 import os
 import platform
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 from novaagent.config.loader import runtime_paths
@@ -11,9 +12,16 @@ from novaagent.domain.providers import PROVIDER_SECRET_ENV
 
 
 class DiagnosticsService:
-    def __init__(self, settings: Settings, version: str) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        version: str,
+        *,
+        environ: Mapping[str, str] | None = None,
+    ) -> None:
         self._settings = settings
         self._version = version
+        self._environ = os.environ if environ is None else environ
 
     def snapshot(self) -> dict[str, object]:
         paths = runtime_paths(self._settings)
@@ -21,7 +29,7 @@ class DiagnosticsService:
             name: {
                 "enabled": name in self._settings.providers.enabled,
                 "model_configured": bool(getattr(self._settings.providers, name).model),
-                "secret_present": bool(os.environ.get(PROVIDER_SECRET_ENV[name])),
+                "secret_present": bool(self._environ.get(PROVIDER_SECRET_ENV[name])),
             }
             for name in ("qwen", "doubao")
         }

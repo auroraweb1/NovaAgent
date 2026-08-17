@@ -104,7 +104,7 @@ async def run_protocol(
             ErrorPayload(
                 code=public_error.code,
                 message=public_error.message,
-                retryable=isinstance(public_error, DependencyUnavailableError),
+                retryable=public_error.retryable,
                 field=public_error.field,
             )
         )

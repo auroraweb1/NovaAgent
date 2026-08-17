@@ -10,6 +10,7 @@ class NovaAgentError(Exception):
     message: str
     code: str = "internal_error"
     field: str | None = None
+    retryable: bool = False
 
     def __post_init__(self) -> None:
         super().__init__(self.message)
@@ -23,6 +24,30 @@ class ConfigurationError(NovaAgentError):
 class SecretMissingError(NovaAgentError):
     def __init__(self, message: str, *, field: str | None = None) -> None:
         super().__init__(message=message, code="secret_missing", field=field)
+
+
+class AuthenticationRequiredError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="需要有效的 Web 访问令牌", code="authentication_required")
+
+
+class RequestInvalidError(NovaAgentError):
+    def __init__(self, message: str = "请求格式不正确", *, field: str | None = None) -> None:
+        super().__init__(message=message, code="request_invalid", field=field)
+
+
+class RequestTooLargeError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="请求内容过大", code="request_too_large")
+
+
+class MessageTooLongError(NovaAgentError):
+    def __init__(self, limit: int) -> None:
+        super().__init__(
+            message=f"输入内容不能超过 {limit:,} 个字符",
+            code="message_too_long",
+            field="message",
+        )
 
 
 class PathConfigurationError(NovaAgentError):
@@ -46,7 +71,78 @@ class WebBindError(NovaAgentError):
 
 class DependencyUnavailableError(NovaAgentError):
     def __init__(self, message: str) -> None:
-        super().__init__(message=message, code="dependency_unavailable")
+        super().__init__(message=message, code="dependency_unavailable", retryable=True)
+
+
+class ProviderAuthenticationError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问认证失败，请检查服务端 API Key 和模型权限",
+            code="provider_authentication_failed",
+        )
+
+
+class ProviderRateLimitedError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问请求过于频繁，请稍后重试",
+            code="provider_rate_limited",
+            retryable=True,
+        )
+
+
+class ProviderTimeoutError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问响应超时，请稍后重试",
+            code="provider_timeout",
+            retryable=True,
+        )
+
+
+class ProviderBusyError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="当前模型请求较多，请稍后重试",
+            code="provider_busy",
+            retryable=True,
+        )
+
+
+class ProviderModelInvalidError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问模型配置无效或当前模型不兼容",
+            code="provider_model_invalid",
+            field="providers.qwen.model",
+        )
+
+
+class ProviderInputRejectedError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问拒绝了当前输入，请修改内容后重试",
+            code="provider_input_rejected",
+            field="message",
+        )
+
+
+class ProviderUnavailableError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问服务暂时不可用，请稍后重试",
+            code="provider_unavailable",
+            retryable=True,
+        )
+
+
+class ProviderResponseInvalidError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="千问返回了无法处理的响应，请稍后重试",
+            code="provider_response_invalid",
+            retryable=True,
+        )
 
 
 class ProtocolValidationError(NovaAgentError):

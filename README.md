@@ -28,24 +28,26 @@ uv run ruff format --check .
 uv run mypy src tests
 ```
 
-## Run the foundation service
+## Run the Web console
 
 ```text
 uv run novaagent serve --environment test
 ```
 
-The service binds to `127.0.0.1:8765` by default. Check it with:
+The service binds to `127.0.0.1:8765` by default. Open that address in a browser for the
+single-turn Qwen console, or check the service with:
 
 ```text
 curl http://127.0.0.1:8765/health/live
 curl http://127.0.0.1:8765/health/ready
 ```
 
-Stage 01 intentionally exposes health and diagnostic endpoints only. Chat, sessions, tools, and real provider calls are added in later stages.
+The current chat path is non-streaming, text-only, and strictly single-turn. Each send creates an
+independent model request; history, sessions, tools, and multimodal input are not implemented yet.
 
 ## Configuration
 
-The default configuration file is `~/.novaagent/config.toml`. `NOVAAGENT_CONFIG_FILE` can point to another TOML file. Provider secrets are supplied out of band:
+The default configuration file is `~/.novaagent/config.toml`. `NOVAAGENT_CONFIG_FILE` can point to another TOML file. Provider secrets are supplied through a local, ignored `.env` file or another out-of-band environment source:
 
 - `DASHSCOPE_API_KEY` for Qwen
 - `DOUBAO_API_KEY` for Doubao
@@ -53,3 +55,9 @@ The default configuration file is `~/.novaagent/config.toml`. `NOVAAGENT_CONFIG_
 
 Secrets are never written to the project configuration, logs, diagnostics, or test output.
 
+Stage 03 uses Qwen model `qwen3.8-max` by default and calls the fixed official DashScope
+OpenAI-compatible endpoint. For local development, copy `.env.example` to `.env` and fill in the
+key locally; `.env` is ignored by Git. The server loads that file at startup, while an explicitly
+provided process environment variable takes precedence. You can use `--env-file /path/to/.env` for
+another ignored file. The Web console only displays whether the key is configured; it never accepts,
+reads, modifies, or persists Provider API keys.

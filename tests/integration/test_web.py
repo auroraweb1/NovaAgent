@@ -5,11 +5,10 @@ from novaagent.bootstrap.container import build_app, build_settings
 
 def test_health_and_diagnostics_endpoints(runtime_environment: dict[str, str]) -> None:
     settings = build_settings(environ=runtime_environment)
-    client = TestClient(build_app(settings, environ=runtime_environment))
-
-    live = client.get("/health/live")
-    ready = client.get("/health/ready")
-    diagnostics = client.get("/api/v1/diagnostics")
+    with TestClient(build_app(settings, environ=runtime_environment)) as client:
+        live = client.get("/health/live")
+        ready = client.get("/health/ready")
+        diagnostics = client.get("/api/v1/diagnostics")
 
     assert live.status_code == 200
     assert live.json()["status"] == "ok"
@@ -17,6 +16,7 @@ def test_health_and_diagnostics_endpoints(runtime_environment: dict[str, str]) -
     assert ready.json()["status"] == "ready"
     assert diagnostics.status_code == 200
     assert diagnostics.json()["providers"]["enabled"] == ["qwen", "doubao"]
+    assert diagnostics.json()["providers"]["details"]["qwen"]["secret_present"] is False
     assert "DASHSCOPE_API_KEY" not in diagnostics.text
 
 
@@ -28,21 +28,31 @@ def test_token_authentication_protects_diagnostics(runtime_environment: dict[str
         "NOVAAGENT_WEB_TOKEN": "test-token",
     }
     settings = build_settings(environ=environment)
-    client = TestClient(build_app(settings, environ=environment))
+    with TestClient(build_app(settings, environ=environment)) as client:
+        assert client.get("/health/live").status_code == 200
+        assert client.get("/").status_code == 200
+        assert client.get("/assets/app.js").status_code == 200
+        assert client.get("/api/v1/diagnostics").status_code == 401
+        assert (
+            client.get(
+                "/api/v1/diagnostics", headers={"X-NovaAgent-Token": "test-token"}
+            ).status_code
+            == 200
+        )
 
-    assert client.get("/health/live").status_code == 200
-    assert client.get("/api/v1/diagnostics").status_code == 401
-    assert (
-        client.get("/api/v1/diagnostics", headers={"X-NovaAgent-Token": "test-token"}).status_code
-        == 200
-    )
 
-
-def test_root_is_a_stage_placeholder(runtime_environment: dict[str, str]) -> None:
+def test_root_serves_the_stage_03_web_console(runtime_environment: dict[str, str]) -> None:
     settings = build_settings(environ=runtime_environment)
-    client = TestClient(build_app(settings, environ=runtime_environment))
-
-    response = client.get("/")
+    with TestClient(build_app(settings, environ=runtime_environment)) as client:
+        response = client.get("/")
+        script = client.get("/assets/app.js")
 
     assert response.status_code == 200
-    assert response.json()["chat"] == "not_implemented"
+    assert response.headers["content-type"].startswith("text/html")
+    assert "千问单轮对话" in response.text
+    assert "Provider API Key" not in response.text
+    assert "Content-Security-Policy" in response.headers
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert "innerHTML" not in script.text
+    assert "localStorage" not in script.text
+    assert "sessionStorage" not in script.text

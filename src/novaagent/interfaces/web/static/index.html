@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>NovaAgent Web 控制台</title>
+    <link rel="stylesheet" href="/assets/styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero">
+        <p class="eyebrow">NOVAAGENT · STAGE 03</p>
+        <h1>千问单轮对话</h1>
+        <p class="scope">每次发送都是独立请求，当前不保存会话，也不使用工具或多模态内容。</p>
+      </header>
+
+      <section class="status-card" aria-labelledby="status-title">
+        <div>
+          <p class="section-label" id="status-title">服务状态</p>
+          <p id="provider-status" class="status-text" aria-live="polite">正在读取配置…</p>
+        </div>
+        <button id="refresh-status" class="button secondary" type="button">刷新状态</button>
+      </section>
+
+      <section id="token-panel" class="token-panel" hidden>
+        <label for="web-token">Web 访问令牌</label>
+        <p>这是 NovaAgent 控制台访问令牌，不是千问 API Key。它只保存在当前页面内存中。</p>
+        <input id="web-token" type="password" autocomplete="off" spellcheck="false">
+      </section>
+
+      <section class="chat-card" aria-labelledby="chat-title">
+        <div class="chat-heading">
+          <div>
+            <p class="section-label">新请求</p>
+            <h2 id="chat-title">你想问什么？</h2>
+          </div>
+          <span id="character-count" class="character-count">0 / 32,000</span>
+        </div>
+
+        <label class="sr-only" for="message">消息内容</label>
+        <textarea
+          id="message"
+          maxlength="32000"
+          rows="9"
+          placeholder="输入消息。空白内容会提示你重新输入。"
+        ></textarea>
+
+        <div class="actions">
+          <button id="send" class="button primary" type="button">发送</button>
+          <button id="clear" class="button secondary" type="button">清空</button>
+          <p id="request-state" class="request-state" aria-live="polite"></p>
+        </div>
+      </section>
+
+      <section id="result-card" class="result-card" aria-labelledby="result-title" hidden>
+        <p class="section-label">千问回复</p>
+        <h2 id="result-title">回答</h2>
+        <pre id="answer" class="answer"></pre>
+        <dl class="metadata">
+          <div><dt>Provider</dt><dd id="meta-provider">—</dd></div>
+          <div><dt>模型</dt><dd id="meta-model">—</dd></div>
+          <div><dt>延迟</dt><dd id="meta-latency">—</dd></div>
+          <div><dt>输入 Token</dt><dd id="meta-input">—</dd></div>
+          <div><dt>输出 Token</dt><dd id="meta-output">—</dd></div>
+          <div><dt>合计 Token</dt><dd id="meta-total">—</dd></div>
+        </dl>
+      </section>
+
+      <section id="error-card" class="error-card" role="alert" hidden>
+        <p class="section-label">请求未完成</p>
+        <h2 id="error-title">发生错误</h2>
+        <p id="error-message"></p>
+        <p id="error-reference" class="error-reference"></p>
+      </section>
+    </main>
+    <script src="/assets/app.js" defer></script>
+  </body>
+</html>

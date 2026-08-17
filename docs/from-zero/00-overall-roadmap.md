@@ -245,11 +245,17 @@ NovaAgent/
         ├── 01-engineering-foundation/
         │   ├── design.md
         │   └── completion-report.md
-        └── 02-core-message-event-protocol/
+        ├── 02-core-message-event-protocol/
+        │   ├── design.md
+        │   └── completion-report.md
+        ├── 03-qwen-web-single-turn-chat/
+        │   ├── design.md
+        │   └── completion-report.md
+        └── 04-web-streaming-multiturn-session/
             └── design.md
 ```
 
-阶段目录只在准备进入对应阶段时创建。`01-engineering-foundation/` 和 `02-core-message-event-protocol/` 均已完成并通过验收。阶段状态以第 12 节和进度表为准。
+阶段目录只在准备进入对应阶段时创建。`01-engineering-foundation/`、`02-core-message-event-protocol/` 和 `03-qwen-web-single-turn-chat/` 均已完成并通过验收；`04-web-streaming-multiturn-session/` 已进入设计。阶段状态以第 12 节和进度表为准。
 
 ## 6. 核心执行流程
 
@@ -390,8 +396,10 @@ Web、模型和工具必须使用同一种内部语言，避免前端协议、�
 #### 本阶段工作
 
 - 定义模型能力、请求选项、使用量和标准错误。
-- 实现千问 / DashScope Provider Adapter。
-- 实现模型配置、密钥读取、超时、重试和速率限制基础规则。
+- 实现千问 / DashScope Provider Adapter，默认模型为 `qwen3.8-max`。
+- 将官方 Base URL `https://dashscope.aliyuncs.com/compatible-mode/v1` 固定在 Adapter，不开放自定义端点。
+- `DASHSCOPE_API_KEY` 由服务端进程环境或未纳入 Git 的本地 `.env` 文件提供；进程环境变量优先，Web 当前和以后只显示配置状态，不管理 Provider API Key。
+- 实现模型配置、密钥状态、超时、重试和速率限制基础规则。
 - 实现非流式单轮聊天应用服务。
 - 实现只支持单轮聊天的最小 Web 页面和 API，作为唯一用户入口的第一版。
 - 区分鉴权错误、限流、超时、输入错误和供应商服务错误。
@@ -971,8 +979,8 @@ docs/from-zero/
 | --- | --- | --- |
 | 01 产品边界与工程地基 | 已完成 | 已通过组合证据验收，详见阶段 01 完成报告 |
 | 02 核心消息与事件协议 | 已完成 | 自动化门禁和测试驱动最小演示均已通过负责人验收 |
-| 03 千问接入与 Web 单轮聊天 | 未开始 | 前置阶段已完成，可以进入设计 |
-| 04 Web 流式输出与多轮会话 | 未开始 | 必须等待阶段 03 完成 |
+| 03 千问接入与 Web 单轮聊天 | 已完成 | 自动化门禁、MockTransport 闭环和真实千问 Web 演示均已通过负责人验收 |
+| 04 Web 流式输出与多轮会话 | 设计中 | 前置阶段已完成，正在编写 SSE、内存会话、取消和上下文预算设计 |
 | 05 Agent 决策循环 | 未开始 | 必须等待阶段 04 完成 |
 | 06 安全的本地工具 | 未开始 | 必须等待阶段 05 完成 |
 | 07 Web 控制台完善 | 未开始 | 必须等待阶段 06 完成 |

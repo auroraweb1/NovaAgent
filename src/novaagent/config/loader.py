@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path
@@ -10,12 +9,14 @@ from pydantic import ValidationError
 
 from novaagent.config.model import Settings
 from novaagent.config.paths import RuntimePaths, resolve_runtime_paths
+from novaagent.config.secrets import ENV_FILE_VARIABLE, load_runtime_environment
 from novaagent.domain.errors import ConfigurationError, ProviderNotAllowedError
 from novaagent.domain.providers import ALLOWED_PROVIDERS
 
 ALLOWED_ENVIRONMENT_KEYS = frozenset(
     {
         "NOVAAGENT_CONFIG_FILE",
+        ENV_FILE_VARIABLE,
         "NOVAAGENT_ENVIRONMENT",
         "NOVAAGENT_LOG_LEVEL",
         "NOVAAGENT_WEB_HOST",
@@ -24,6 +25,11 @@ ALLOWED_ENVIRONMENT_KEYS = frozenset(
         "NOVAAGENT_PROVIDERS_DEFAULT",
         "NOVAAGENT_PROVIDERS_ENABLED",
         "NOVAAGENT_QWEN_MODEL",
+        "NOVAAGENT_QWEN_TEMPERATURE",
+        "NOVAAGENT_QWEN_MAX_OUTPUT_TOKENS",
+        "NOVAAGENT_QWEN_TIMEOUT_SECONDS",
+        "NOVAAGENT_QWEN_MAX_RETRIES",
+        "NOVAAGENT_QWEN_MAX_CONCURRENCY",
         "NOVAAGENT_DOUBAO_MODEL",
         "NOVAAGENT_DATA_DIR",
         "NOVAAGENT_LOG_DIR",
@@ -38,8 +44,9 @@ def load_settings(
     config_file: Path | None = None,
     environment: str | None = None,
     environ: Mapping[str, str] | None = None,
+    env_file: Path | None = None,
 ) -> Settings:
-    env = dict(os.environ if environ is None else environ)
+    env = load_runtime_environment(environ=environ, env_file=env_file)
     _reject_unknown_environment(env)
     selected_file = config_file or _config_file_from_env(env)
     raw = _read_toml(selected_file) if selected_file is not None else {}
@@ -106,6 +113,22 @@ def _apply_environment(raw: Mapping[str, Any], environ: Mapping[str, str]) -> di
             if item.strip()
         ]
     _set_if_present(qwen, "model", environ, "NOVAAGENT_QWEN_MODEL")
+    if "NOVAAGENT_QWEN_TEMPERATURE" in environ:
+        qwen["temperature"] = _parse_float(
+            environ["NOVAAGENT_QWEN_TEMPERATURE"], "NOVAAGENT_QWEN_TEMPERATURE"
+        )
+    for field, env_name in (
+        ("max_output_tokens", "NOVAAGENT_QWEN_MAX_OUTPUT_TOKENS"),
+        ("max_retries", "NOVAAGENT_QWEN_MAX_RETRIES"),
+        ("max_concurrency", "NOVAAGENT_QWEN_MAX_CONCURRENCY"),
+    ):
+        if env_name in environ:
+            qwen[field] = _parse_int(environ[env_name], env_name)
+    if "NOVAAGENT_QWEN_TIMEOUT_SECONDS" in environ:
+        qwen["timeout_seconds"] = _parse_float(
+            environ["NOVAAGENT_QWEN_TIMEOUT_SECONDS"],
+            "NOVAAGENT_QWEN_TIMEOUT_SECONDS",
+        )
     _set_if_present(doubao, "model", environ, "NOVAAGENT_DOUBAO_MODEL")
     _set_if_present(paths, "data_dir", environ, "NOVAAGENT_DATA_DIR")
     _set_if_present(paths, "log_dir", environ, "NOVAAGENT_LOG_DIR")
@@ -132,6 +155,13 @@ def _parse_int(value: str, field: str) -> int:
         return int(value)
     except ValueError as error:
         raise ConfigurationError(f"{field} must be an integer", field=field) from error
+
+
+def _parse_float(value: str, field: str) -> float:
+    try:
+        return float(value)
+    except ValueError as error:
+        raise ConfigurationError(f"{field} must be a number", field=field) from error
 
 
 def _reject_unknown_environment(environ: Mapping[str, str]) -> None:

@@ -16,6 +16,12 @@ def test_default_settings_use_only_allowed_providers(runtime_environment: dict[s
 
     assert settings.providers.default == "qwen"
     assert settings.providers.enabled == ("qwen", "doubao")
+    assert settings.providers.qwen.model == "qwen3.8-max"
+    assert settings.providers.qwen.temperature == 0.7
+    assert settings.providers.qwen.max_output_tokens == 2048
+    assert settings.providers.qwen.timeout_seconds == 60
+    assert settings.providers.qwen.max_retries == 1
+    assert settings.providers.qwen.max_concurrency == 4
     assert settings.web.host == "127.0.0.1"
     assert settings.app.environment == "test"
 
@@ -25,16 +31,95 @@ def test_environment_overrides_provider_and_web_settings(
 ) -> None:
     environment = {
         **runtime_environment,
-        "NOVAAGENT_PROVIDERS_DEFAULT": "doubao",
-        "NOVAAGENT_PROVIDERS_ENABLED": "doubao",
+        "NOVAAGENT_PROVIDERS_DEFAULT": "qwen",
+        "NOVAAGENT_PROVIDERS_ENABLED": "qwen",
         "NOVAAGENT_WEB_PORT": "9876",
+        "NOVAAGENT_QWEN_MODEL": "qwen-plus",
+        "NOVAAGENT_QWEN_TEMPERATURE": "0.2",
+        "NOVAAGENT_QWEN_MAX_OUTPUT_TOKENS": "1024",
+        "NOVAAGENT_QWEN_TIMEOUT_SECONDS": "25.5",
+        "NOVAAGENT_QWEN_MAX_RETRIES": "2",
+        "NOVAAGENT_QWEN_MAX_CONCURRENCY": "8",
     }
 
     settings = load_settings(environ=environment)
 
-    assert settings.providers.default == "doubao"
-    assert settings.providers.enabled == ("doubao",)
+    assert settings.providers.default == "qwen"
+    assert settings.providers.enabled == ("qwen",)
     assert settings.web.port == 9876
+    assert settings.providers.qwen.model == "qwen-plus"
+    assert settings.providers.qwen.temperature == 0.2
+    assert settings.providers.qwen.max_output_tokens == 1024
+    assert settings.providers.qwen.timeout_seconds == 25.5
+    assert settings.providers.qwen.max_retries == 2
+    assert settings.providers.qwen.max_concurrency == 8
+
+
+def test_doubao_cannot_be_the_stage_03_default(runtime_environment: dict[str, str]) -> None:
+    environment = {
+        **runtime_environment,
+        "NOVAAGENT_PROVIDERS_DEFAULT": "doubao",
+        "NOVAAGENT_PROVIDERS_ENABLED": "doubao",
+    }
+
+    with pytest.raises(ConfigurationError, match="must be qwen") as raised:
+        load_settings(environ=environment)
+
+    assert raised.value.field == "providers"
+
+
+@pytest.mark.parametrize(
+    "model",
+    ["Qwen-Max", "qwen max", "qwen/max", "other-model", "qwen" + "a" * 125],
+)
+def test_invalid_qwen_model_names_are_rejected(
+    runtime_environment: dict[str, str], model: str
+) -> None:
+    environment = {**runtime_environment, "NOVAAGENT_QWEN_MODEL": model}
+
+    with pytest.raises(ConfigurationError, match="qwen model") as raised:
+        load_settings(environ=environment)
+
+    assert raised.value.field == "providers.qwen.model"
+
+
+def test_qwen_model_name_accepts_the_128_character_boundary(
+    runtime_environment: dict[str, str],
+) -> None:
+    model = "qwen" + "a" * 124
+
+    settings = load_settings(environ={**runtime_environment, "NOVAAGENT_QWEN_MODEL": model})
+
+    assert settings.providers.qwen.model == model
+
+
+@pytest.mark.parametrize(
+    ("name", "value", "message"),
+    [
+        ("NOVAAGENT_QWEN_TEMPERATURE", "warm", "must be a number"),
+        ("NOVAAGENT_QWEN_MAX_OUTPUT_TOKENS", "many", "must be an integer"),
+        ("NOVAAGENT_QWEN_TIMEOUT_SECONDS", "slow", "must be a number"),
+        ("NOVAAGENT_QWEN_MAX_RETRIES", "again", "must be an integer"),
+        ("NOVAAGENT_QWEN_MAX_CONCURRENCY", "several", "must be an integer"),
+    ],
+)
+def test_invalid_qwen_numeric_environment_values_are_rejected(
+    runtime_environment: dict[str, str], name: str, value: str, message: str
+) -> None:
+    with pytest.raises(ConfigurationError, match=message) as raised:
+        load_settings(environ={**runtime_environment, name: value})
+
+    assert raised.value.field == name
+
+
+def test_qwen_base_url_cannot_be_configured(runtime_environment: dict[str, str]) -> None:
+    environment = {
+        **runtime_environment,
+        "NOVAAGENT_QWEN_BASE_URL": "https://example.invalid/v1",
+    }
+
+    with pytest.raises(ConfigurationError, match="unknown NovaAgent environment variable"):
+        load_settings(environ=environment)
 
 
 def test_unknown_provider_is_rejected(runtime_environment: dict[str, str]) -> None:
