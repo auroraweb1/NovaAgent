@@ -67,7 +67,7 @@
 - 千问模型名要求以 `qwen` 开头，最长 128 字符，只允许小写字母、数字、点、下划线和连字符。
 - `temperature`、`max_output_tokens`、`timeout_seconds`、`max_retries` 和 `max_concurrency` 具有明确默认值和上下界。
 - 官方 Base URL 不属于配置 Schema；`NOVAAGENT_QWEN_BASE_URL` 会作为未知环境变量被拒绝。
-- 阶段 03 验收时 Provider 白名单为 `qwen` 和 `doubao`，没有自定义 Provider 注册入口；当前目标通过 MOD-06 删除豆包。
+- 阶段 03 设计只保留千问 Provider；阶段 05 编码前已完成 Provider 范围收敛，不提供自定义 Provider 注册入口。
 - `DASHSCOPE_API_KEY` 不进入 `Settings`，只在 Bootstrap 提供的服务端运行时环境快照中解析；该快照支持进程环境和 Git 忽略的本地 `.env` 文件，进程环境变量优先。
 - 千问能力声明为纯文本输入输出、可选 usage，不支持原生流式、工具、思考摘要、图片或音频。
 

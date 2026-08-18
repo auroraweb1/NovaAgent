@@ -32,11 +32,11 @@ uv run mypy src tests
 ## Run the Web console
 
 ```text
-uv run novaagent serve --environment test
+uv run novaagent serve --environment local
 ```
 
 The service binds to `127.0.0.1:8765` by default. Open that address in a browser for the
-single-turn Qwen console, or check the service with:
+streaming Qwen Agent console, or check the service with:
 
 ```text
 curl http://127.0.0.1:8765/health/live
@@ -45,7 +45,10 @@ curl http://127.0.0.1:8765/health/ready
 
 The current Web console supports text-only streaming and multiple in-memory sessions. Each session
 can contain successful user/assistant turns, while cancellation and provider failures leave the
-incomplete turn out of history. Sessions are cleared when the service process restarts; tools,
+incomplete turn out of history. The stage 05 Agent loop can call registered tools and exposes only
+tool name/status events to the Web page. The diagnostic `echo` tool is registered only in `local`
+and `test`; production currently registers no tools. Tool traces remain run-local and are not added
+to formal session history. Sessions are cleared when the service process restarts; real local tools,
 persistence, and Markdown rendering are not implemented yet. Image, audio, and video model input
 and related multimodal tasks are intentionally out of scope. The original non-streaming
 `POST /api/v1/chat` endpoint remains available for compatibility.
@@ -66,6 +69,18 @@ provided process environment variable takes precedence. You can use `--env-file 
 another ignored file. The Web console only displays whether the key is configured; it never accepts,
 reads, modifies, or persists Provider API keys.
 
-The product scope no longer includes Doubao. The current configuration and `doctor` output may
-temporarily expose a legacy Doubao status inherited from the stage 01 implementation; it is not a
-supported Provider and is tracked for removal before stage 05 implementation begins.
+The product scope no longer includes Doubao. Runtime configuration, diagnostics, CLI output and
+tests are Qwen-only. An obsolete Doubao key left in an older local `.env` is ignored and never
+enters the runtime environment or diagnostics.
+
+Agent safety limits can be configured in TOML and are never controlled by the Web request:
+
+```toml
+[agent]
+max_steps = 8
+max_tool_calls = 16
+max_tool_calls_per_step = 8
+total_timeout_seconds = 180
+model_step_timeout_seconds = 75
+tool_timeout_seconds = 10
+```

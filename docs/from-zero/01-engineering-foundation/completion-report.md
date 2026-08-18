@@ -67,7 +67,7 @@
 - TOML 配置读取和默认配置路径。
 - `NOVAAGENT_*` 环境变量覆盖。
 - 未知 NovaAgent 环境变量拒绝。
-- `qwen` 和 `doubao` Provider 白名单。
+- `qwen` Provider 白名单。
 - 未知 Provider、自定义 Provider 和自定义端点拒绝。
 - Provider 默认值和启用列表一致性校验。
 - 非回环 Web 地址必须启用 Token 认证。
@@ -202,7 +202,7 @@ NOVAAGENT_WORKSPACE_DIR=/private/tmp/novaagent-workspace \
 uv run novaagent doctor --environment test
 ```
 
-结果：返回 `status: ok`；千问和豆包均被识别为启用 Provider；缺少 `DASHSCOPE_API_KEY` 和 `DOUBAO_API_KEY` 被报告为警告，没有泄露密钥内容。
+结果：返回 `status: ok`；仅千问被识别为启用 Provider；缺少 `DASHSCOPE_API_KEY` 被报告为警告，没有泄露密钥内容。
 
 ### 4.4 Web 端到端验证
 

@@ -19,6 +19,12 @@ ALLOWED_ENVIRONMENT_KEYS = frozenset(
         ENV_FILE_VARIABLE,
         "NOVAAGENT_ENVIRONMENT",
         "NOVAAGENT_LOG_LEVEL",
+        "NOVAAGENT_AGENT_MAX_STEPS",
+        "NOVAAGENT_AGENT_MAX_TOOL_CALLS",
+        "NOVAAGENT_AGENT_MAX_TOOL_CALLS_PER_STEP",
+        "NOVAAGENT_AGENT_TOTAL_TIMEOUT_SECONDS",
+        "NOVAAGENT_AGENT_MODEL_STEP_TIMEOUT_SECONDS",
+        "NOVAAGENT_AGENT_TOOL_TIMEOUT_SECONDS",
         "NOVAAGENT_WEB_HOST",
         "NOVAAGENT_WEB_PORT",
         "NOVAAGENT_WEB_AUTH_MODE",
@@ -30,7 +36,6 @@ ALLOWED_ENVIRONMENT_KEYS = frozenset(
         "NOVAAGENT_QWEN_TIMEOUT_SECONDS",
         "NOVAAGENT_QWEN_MAX_RETRIES",
         "NOVAAGENT_QWEN_MAX_CONCURRENCY",
-        "NOVAAGENT_DOUBAO_MODEL",
         "NOVAAGENT_DATA_DIR",
         "NOVAAGENT_LOG_DIR",
         "NOVAAGENT_WORKSPACE_DIR",
@@ -94,13 +99,27 @@ def _read_toml(path: Path) -> dict[str, Any]:
 def _apply_environment(raw: Mapping[str, Any], environ: Mapping[str, str]) -> dict[str, Any]:
     result = _deep_copy_mapping(raw)
     app = result.setdefault("app", {})
+    agent = result.setdefault("agent", {})
     web = result.setdefault("web", {})
     providers = result.setdefault("providers", {})
     qwen = providers.setdefault("qwen", {})
-    doubao = providers.setdefault("doubao", {})
     paths = result.setdefault("paths", {})
     _set_if_present(app, "environment", environ, "NOVAAGENT_ENVIRONMENT")
     _set_if_present(app, "log_level", environ, "NOVAAGENT_LOG_LEVEL")
+    for field, env_name in (
+        ("max_steps", "NOVAAGENT_AGENT_MAX_STEPS"),
+        ("max_tool_calls", "NOVAAGENT_AGENT_MAX_TOOL_CALLS"),
+        ("max_tool_calls_per_step", "NOVAAGENT_AGENT_MAX_TOOL_CALLS_PER_STEP"),
+    ):
+        if env_name in environ:
+            agent[field] = _parse_int(environ[env_name], env_name)
+    for field, env_name in (
+        ("total_timeout_seconds", "NOVAAGENT_AGENT_TOTAL_TIMEOUT_SECONDS"),
+        ("model_step_timeout_seconds", "NOVAAGENT_AGENT_MODEL_STEP_TIMEOUT_SECONDS"),
+        ("tool_timeout_seconds", "NOVAAGENT_AGENT_TOOL_TIMEOUT_SECONDS"),
+    ):
+        if env_name in environ:
+            agent[field] = _parse_float(environ[env_name], env_name)
     _set_if_present(web, "host", environ, "NOVAAGENT_WEB_HOST")
     if "NOVAAGENT_WEB_PORT" in environ:
         web["port"] = _parse_int(environ["NOVAAGENT_WEB_PORT"], "NOVAAGENT_WEB_PORT")
@@ -129,7 +148,6 @@ def _apply_environment(raw: Mapping[str, Any], environ: Mapping[str, str]) -> di
             environ["NOVAAGENT_QWEN_TIMEOUT_SECONDS"],
             "NOVAAGENT_QWEN_TIMEOUT_SECONDS",
         )
-    _set_if_present(doubao, "model", environ, "NOVAAGENT_DOUBAO_MODEL")
     _set_if_present(paths, "data_dir", environ, "NOVAAGENT_DATA_DIR")
     _set_if_present(paths, "log_dir", environ, "NOVAAGENT_LOG_DIR")
     _set_if_present(paths, "workspace_dir", environ, "NOVAAGENT_WORKSPACE_DIR")

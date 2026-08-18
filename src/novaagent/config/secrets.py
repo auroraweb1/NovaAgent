@@ -10,10 +10,10 @@ from novaagent.domain.errors import ConfigurationError
 LOCAL_SECRET_KEYS = frozenset(
     {
         "DASHSCOPE_API_KEY",
-        "DOUBAO_API_KEY",
         "NOVAAGENT_WEB_TOKEN",
     }
 )
+LEGACY_IGNORED_KEYS = frozenset({"DOUBAO_API_KEY"})
 ENV_FILE_VARIABLE = "NOVAAGENT_ENV_FILE"
 _KEY_PATTERN = re.compile(r"^[A-Z_][A-Z0-9_]*$")
 
@@ -66,6 +66,8 @@ def _read_dotenv(path: Path, *, required: bool) -> dict[str, str]:
             )
         key, value = line.split("=", 1)
         key = key.strip()
+        if key in LEGACY_IGNORED_KEYS:
+            continue
         if key not in LOCAL_SECRET_KEYS or not _KEY_PATTERN.fullmatch(key):
             raise ConfigurationError(
                 f"unsupported key in environment file: {key}",

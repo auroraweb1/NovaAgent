@@ -219,12 +219,9 @@ auth_mode = "local"
 
 [providers]
 default = "qwen"
-enabled = ["qwen", "doubao"]
+enabled = ["qwen"]
 
 [providers.qwen]
-model = ""
-
-[providers.doubao]
 model = ""
 
 [paths]
@@ -233,12 +230,11 @@ log_dir = "~/.novaagent/logs"
 workspace_dir = "~/.novaagent/workspace"
 ```
 
-`model` 在阶段 01 可以为空，因为本阶段不发起模型请求；千问模型 ID 已在阶段 03 确定。示例中的豆包配置是阶段 01 历史实现，当前目标会通过 MOD-06 删除。
+`model` 在阶段 01 可以为空，因为本阶段不发起模型请求；千问模型 ID 已在阶段 03 确定。当前产品只保留千问 Provider。
 
 API 密钥不进入 TOML：
 
 - 千问密钥使用 `DASHSCOPE_API_KEY` 注入。
-- 阶段 01 历史实现曾识别 `DOUBAO_API_KEY`；当前产品不再使用，该兼容面由 MOD-06 删除。
 - 诊断只能报告密钥是否存在及其来源，不得报告密钥值、长度以外的可逆信息或完整环境变量。
 
 ### 7.3 配置校验
@@ -248,7 +244,7 @@ API 密钥不进入 TOML：
 - `environment` 只能是 `local`、`test` 或 `production`。
 - Web 端口必须是 `1` 到 `65535` 的整数。
 - `auth_mode` 只能是 `local` 或 `token`。
-- `providers.enabled` 只能包含 `qwen` 和 `doubao`，且至少包含一个 Provider。
+- `providers.enabled` 必须且只能为 `qwen`。
 - `providers.default` 必须出现在 `providers.enabled` 中。
 - 未知顶层字段、未知 Provider 字段和拼写错误的环境变量必须产生可读错误。
 - 不允许配置 `openai`、`claude`、`gemini`、`deepseek`、`glm`、`kimi`、`minimax` 或 `custom`。

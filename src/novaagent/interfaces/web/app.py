@@ -6,7 +6,7 @@ import re
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import AbstractAsyncContextManager
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Protocol
 from uuid import uuid4
 
 from fastapi import Depends, FastAPI, Header, Query, Request
@@ -16,7 +16,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from starlette.staticfiles import StaticFiles
 
 from novaagent import __version__
-from novaagent.application.chat import MultiTurnChatService, SingleTurnChatService
+from novaagent.application.chat import MultiTurnChatResult, SingleTurnChatService
 from novaagent.application.diagnostics import DiagnosticsService
 from novaagent.application.health import HealthService
 from novaagent.config.loader import runtime_paths
@@ -33,6 +33,7 @@ from novaagent.domain.errors import (
     SessionRevisionConflictError,
 )
 from novaagent.domain.events import TERMINAL_EVENT_TYPES, AgentEvent
+from novaagent.domain.ports import EventSinkPort, MultiTurnSessionStorePort
 from novaagent.interfaces.web.chat_protocol import (
     ChatRequestSchema,
     chat_response_from_result,
@@ -50,6 +51,25 @@ _REQUEST_ID_PATTERN = re.compile(r"^[A-Za-z0-9._:-]{1,128}$")
 _STATIC_DIR = Path(__file__).with_name("static")
 
 type Lifespan = Callable[[FastAPI], AbstractAsyncContextManager[None]]
+
+
+class SessionRunService(Protocol):
+    @property
+    def store(self) -> MultiTurnSessionStorePort: ...
+
+    async def validate_context(self, *, session_id: str, text: str) -> None: ...
+
+    async def stream_chat(
+        self,
+        *,
+        session_id: str,
+        expected_revision: int,
+        text: str,
+        sink: EventSinkPort,
+    ) -> MultiTurnChatResult: ...
+
+    async def cancel(self, run_id: str, *, reason: str) -> bool: ...
+
 
 _ERROR_STATUS = {
     "message_empty": 422,
@@ -83,7 +103,7 @@ def create_app(
     *,
     chat_service: SingleTurnChatService,
     diagnostics: DiagnosticsService,
-    multi_turn_service: MultiTurnChatService,
+    multi_turn_service: SessionRunService,
     lifespan: Lifespan,
     environ: Mapping[str, str],
 ) -> FastAPI:

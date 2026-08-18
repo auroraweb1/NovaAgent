@@ -77,7 +77,7 @@ def _doctor(args: argparse.Namespace) -> int:
             "enabled": name in settings.providers.enabled,
             "secret_present": bool(environment.get(PROVIDER_SECRET_ENV[name])),
         }
-        for name in ("qwen", "doubao")
+        for name in ("qwen",)
     }
     payload = {
         "status": "ok",

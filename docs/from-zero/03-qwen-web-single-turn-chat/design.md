@@ -35,8 +35,8 @@
 
 当前代码已经具备：
 
-- 只允许 `qwen` 和 `doubao` 的 Provider 白名单。
-- 从 `DASHSCOPE_API_KEY` 和 `DOUBAO_API_KEY` 检查密钥是否存在的诊断能力。
+- 只允许 `qwen` 的 Provider 白名单。
+- 从 `DASHSCOPE_API_KEY` 检查千问密钥是否存在的诊断能力。
 - FastAPI 应用、健康检查、诊断 API、请求 ID 和本地/令牌两种 Web 鉴权模式。
 - 不可变的 `Message`、`TextBlock`、`ModelRequest`、`ModelOutput` 和 `AgentEvent`。
 - 异步 `ModelPort.stream()`；即使调用方需要完整回复，也通过统一输出协议聚合。
@@ -355,7 +355,7 @@ class SingleTurnChatService:
 | `text_input` | `true` | 只支持 TextBlock |
 | `text_output` | `true` | 必须产生有意义文本 |
 | `native_streaming` | `false` | 阶段 04 再开放 |
-| `tool_calling` | `false` | 阶段 05 再开放 |
+| `tool_calling` | `false` | 阶段 05 再开放；阶段 05 已实现 |
 | `reasoning_summary` | `false` | 不把原始思维链当摘要 |
 | `image_input` | `false` | 永久不开放模型图片输入 |
 | `audio_input` | `false` | 永久不开放模型音频输入 |

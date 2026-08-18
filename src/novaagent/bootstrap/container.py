@@ -8,7 +8,8 @@ import httpx
 from fastapi import FastAPI
 
 from novaagent import __version__
-from novaagent.application.chat import MultiTurnChatService, SingleTurnChatService
+from novaagent.application.agent import AgentRunService, EchoTool, ToolRegistry
+from novaagent.application.chat import SingleTurnChatService
 from novaagent.application.diagnostics import DiagnosticsService
 from novaagent.config.loader import load_settings
 from novaagent.config.model import Settings
@@ -65,13 +66,18 @@ def build_app(
         ),
     )
     session_store = InMemorySessionStore()
-    multi_turn_service = MultiTurnChatService(
+    tool_registry = ToolRegistry()
+    if settings.app.environment in {"local", "test"}:
+        tool_registry.register(EchoTool())
+    agent_service = AgentRunService(
         model=model,
         store=session_store,
+        tools=tool_registry,
         options=ModelOptions(
             temperature=settings.providers.qwen.temperature,
             max_output_tokens=settings.providers.qwen.max_output_tokens,
         ),
+        settings=settings.agent,
     )
     diagnostics = DiagnosticsService(settings, __version__, environ=environment)
 
@@ -86,7 +92,7 @@ def build_app(
         settings,
         chat_service=chat_service,
         diagnostics=diagnostics,
-        multi_turn_service=multi_turn_service,
+        multi_turn_service=agent_service,
         lifespan=lifespan,
         environ=environment,
     )

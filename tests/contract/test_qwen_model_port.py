@@ -15,7 +15,7 @@ def accepts_model_port(_: ModelPort) -> None:
     return None
 
 
-def test_qwen_adapter_satisfies_model_port_and_declares_stage_03_capabilities() -> None:
+def test_qwen_adapter_satisfies_model_port_and_declares_stage_05_capabilities() -> None:
     async def scenario() -> None:
         client = httpx.AsyncClient(transport=httpx.MockTransport(lambda _: httpx.Response(500)))
         adapter = QwenModelAdapter(
@@ -30,8 +30,8 @@ def test_qwen_adapter_satisfies_model_port_and_declares_stage_03_capabilities() 
             assert adapter.capabilities.text_input is True
             assert adapter.capabilities.text_output is True
             assert adapter.capabilities.usage is True
-            assert adapter.capabilities.native_streaming is False
-            assert adapter.capabilities.tool_calling is False
+            assert adapter.capabilities.native_streaming is True
+            assert adapter.capabilities.tool_calling is True
             assert adapter.capabilities.reasoning_summary is False
             assert adapter.capabilities.image_input is False
             assert adapter.capabilities.audio_input is False

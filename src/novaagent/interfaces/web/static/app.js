@@ -259,6 +259,10 @@ function handleAgentEvent(event, answerContent) {
   } else if (event.type === "text_delta") {
     answerContent.textContent += event.payload.delta;
     elements.messages.scrollTop = elements.messages.scrollHeight;
+  } else if (event.type === "tool_call") {
+    elements.requestState.textContent = `正在调用工具：${event.payload.call.tool_name}`;
+  } else if (event.type === "tool_result") {
+    elements.requestState.textContent = event.payload.result.status === "success" ? "工具已返回，继续生成…" : "工具返回错误，模型正在处理…";
   } else if (event.type === "run_completed") {
     const usage = event.payload.usage;
     if (usage) {

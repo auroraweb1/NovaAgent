@@ -15,7 +15,7 @@ def test_default_settings_use_only_allowed_providers(runtime_environment: dict[s
     settings = load_settings(environ=runtime_environment)
 
     assert settings.providers.default == "qwen"
-    assert settings.providers.enabled == ("qwen", "doubao")
+    assert settings.providers.enabled == ("qwen",)
     assert settings.providers.qwen.model == "qwen3.8-max"
     assert settings.providers.qwen.temperature == 0.7
     assert settings.providers.qwen.max_output_tokens == 2048
@@ -55,14 +55,14 @@ def test_environment_overrides_provider_and_web_settings(
     assert settings.providers.qwen.max_concurrency == 8
 
 
-def test_doubao_cannot_be_the_stage_03_default(runtime_environment: dict[str, str]) -> None:
+def test_doubao_is_not_an_allowed_provider(runtime_environment: dict[str, str]) -> None:
     environment = {
         **runtime_environment,
         "NOVAAGENT_PROVIDERS_DEFAULT": "doubao",
         "NOVAAGENT_PROVIDERS_ENABLED": "doubao",
     }
 
-    with pytest.raises(ConfigurationError, match="must be qwen") as raised:
+    with pytest.raises(ProviderNotAllowedError, match="only qwen") as raised:
         load_settings(environ=environment)
 
     assert raised.value.field == "providers"
@@ -230,14 +230,16 @@ def test_invalid_enabled_provider_lists_are_rejected(
     assert raised.value.field == "providers.enabled"
 
 
-def test_default_provider_must_be_enabled(runtime_environment: dict[str, str]) -> None:
+def test_default_provider_rejects_a_disallowed_enabled_provider(
+    runtime_environment: dict[str, str],
+) -> None:
     environment = {
         **runtime_environment,
         "NOVAAGENT_PROVIDERS_DEFAULT": "qwen",
         "NOVAAGENT_PROVIDERS_ENABLED": "doubao",
     }
 
-    with pytest.raises(ConfigurationError, match="must be included") as raised:
+    with pytest.raises(ProviderNotAllowedError, match="only qwen") as raised:
         load_settings(environ=environment)
 
     assert raised.value.field == "providers"

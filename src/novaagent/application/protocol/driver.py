@@ -162,6 +162,9 @@ async def run_protocol(
                 summary_truncated = True
         elif isinstance(output, ToolCallModelOutput):
             await publish(ToolCallPayload(call=output.call))
+            validation_error = ProtocolValidationError("Tool calls require the Agent decision loop")
+            public_error = await fail(validation_error)
+            raise public_error
         elif isinstance(output, UsageModelOutput):
             usage = output.usage
         else:  # pragma: no cover - protects against a non-conforming adapter

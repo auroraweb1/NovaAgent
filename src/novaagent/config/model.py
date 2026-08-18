@@ -10,7 +10,7 @@ from novaagent.domain.providers import ALLOWED_PROVIDERS, ProviderName
 
 
 def default_enabled_providers() -> tuple[ProviderName, ...]:
-    return ("qwen", "doubao")
+    return ("qwen",)
 
 
 class AppSettings(BaseModel):
@@ -46,12 +46,6 @@ class WebSettings(BaseModel):
 QWEN_MODEL_PATTERN = re.compile(r"^qwen[a-z0-9._-]{0,124}$")
 
 
-class ProviderEntry(BaseModel):
-    model_config = ConfigDict(extra="forbid", frozen=True)
-
-    model: str = ""
-
-
 class QwenProviderSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -73,13 +67,23 @@ class QwenProviderSettings(BaseModel):
         return value
 
 
+class AgentSettings(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    max_steps: int = Field(default=8, ge=1, le=32)
+    max_tool_calls: int = Field(default=16, ge=1, le=64)
+    max_tool_calls_per_step: int = Field(default=8, ge=1, le=16)
+    total_timeout_seconds: float = Field(default=180, ge=10, le=900)
+    model_step_timeout_seconds: float = Field(default=75, ge=1, le=300)
+    tool_timeout_seconds: float = Field(default=10, ge=1, le=120)
+
+
 class ProvidersSettings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     default: ProviderName = "qwen"
     enabled: tuple[ProviderName, ...] = Field(default_factory=default_enabled_providers)
     qwen: QwenProviderSettings = Field(default_factory=QwenProviderSettings)
-    doubao: ProviderEntry = Field(default_factory=ProviderEntry)
 
     @field_validator("enabled")
     @classmethod
@@ -97,12 +101,8 @@ class ProvidersSettings(BaseModel):
     def validate_default(self) -> ProvidersSettings:
         if self.default not in self.enabled:
             raise ValueError("providers.default must be included in providers.enabled")
-        if self.default != "qwen":
-            raise ValueError(
-                "providers.default must be qwen until the doubao adapter is implemented"
-            )
-        if "qwen" not in self.enabled:
-            raise ValueError("providers.enabled must include qwen during stage 03")
+        if self.default != "qwen" or self.enabled != ("qwen",):
+            raise ValueError("only qwen may be enabled")
         return self
 
 
@@ -118,6 +118,7 @@ class Settings(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     app: AppSettings = Field(default_factory=AppSettings)
+    agent: AgentSettings = Field(default_factory=AgentSettings)
     web: WebSettings = Field(default_factory=WebSettings)
     providers: ProvidersSettings = Field(default_factory=ProvidersSettings)
     paths: PathsSettings = Field(default_factory=PathsSettings)

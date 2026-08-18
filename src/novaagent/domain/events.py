@@ -257,6 +257,7 @@ class EventSequenceValidator:
     _text_parts: dict[str, list[str]] = field(default_factory=dict)
     _completed_message_id: str | None = None
     _tool_call_ids: set[str] = field(default_factory=set)
+    _tool_result_ids: set[str] = field(default_factory=set)
     _error_code: str | None = None
     _terminal_type: str | None = None
     _context_prepared: bool = False
@@ -309,10 +310,16 @@ class EventSequenceValidator:
             self._message_ids.add(payload.message_id)
             self._text_parts[payload.message_id] = []
         elif isinstance(payload, TextDeltaPayload):
+            if self._completed_message_id is not None:
+                raise EventSequenceError("text_delta cannot follow message_completed")
             if payload.message_id not in self._message_ids:
                 raise EventSequenceError("text_delta requires an earlier message_started")
             self._text_parts[payload.message_id].append(payload.delta)
         elif isinstance(payload, ToolCallPayload):
+            if self._completed_message_id is not None:
+                raise EventSequenceError("tool_call cannot follow message_completed")
+            if self._text_parts and any(self._text_parts.values()):
+                raise EventSequenceError("tool_call cannot appear after text output")
             call_id = payload.call.call_id
             if call_id in self._tool_call_ids:
                 raise EventSequenceError("tool_call call_id must be unique")
@@ -320,11 +327,16 @@ class EventSequenceValidator:
         elif isinstance(payload, ToolResultPayload):
             if payload.result.call_id not in self._tool_call_ids:
                 raise EventSequenceError("tool_result requires an earlier matching tool_call")
+            if payload.result.call_id in self._tool_result_ids:
+                raise EventSequenceError("tool_result call_id must be unique")
+            self._tool_result_ids.add(payload.result.call_id)
         elif isinstance(payload, MessageCompletedPayload):
             self._validate_message_completed(payload)
         elif isinstance(payload, ErrorPayload):
             self._error_code = payload.code
         elif isinstance(payload, RunCompletedPayload):
+            if self._tool_call_ids != self._tool_result_ids:
+                raise EventSequenceError("run_completed requires one result for every tool call")
             if self._completed_message_id is None:
                 raise EventSequenceError("run_completed requires message_completed")
             if payload.message_id != self._completed_message_id:

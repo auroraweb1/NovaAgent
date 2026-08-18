@@ -31,7 +31,7 @@ class DiagnosticsService:
                 "model_configured": bool(getattr(self._settings.providers, name).model),
                 "secret_present": bool(self._environ.get(PROVIDER_SECRET_ENV[name])),
             }
-            for name in ("qwen", "doubao")
+            for name in ("qwen",)
         }
         return {
             "service": "novaagent",

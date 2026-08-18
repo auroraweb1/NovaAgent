@@ -11,7 +11,7 @@ from novaagent.application.protocol.driver import (
     REASONING_SUMMARY_TRUNCATED_NOTICE,
     run_protocol,
 )
-from novaagent.domain.errors import DependencyUnavailableError
+from novaagent.domain.errors import DependencyUnavailableError, ProtocolValidationError
 from novaagent.domain.events import (
     AgentEvent,
     ReasoningSummaryDeltaPayload,
@@ -149,10 +149,12 @@ def test_tool_call_output_uses_a_typed_event_without_executing_the_tool() -> Non
                 TextModelDelta("等待工具阶段"),
             )
         )
-        await run_protocol(request(), model=model, sink=sink)
+        with pytest.raises(ProtocolValidationError, match="Agent decision loop"):
+            await run_protocol(request(), model=model, sink=sink)
 
         assert "tool_call" in [event.type for event in sink.events]
         assert "tool_result" not in [event.type for event in sink.events]
+        assert sink.events[-1].type == "run_failed"
         sink.validate()
 
     asyncio.run(scenario())

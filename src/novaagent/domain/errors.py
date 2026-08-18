@@ -107,7 +107,7 @@ class PathConfigurationError(NovaAgentError):
 class ProviderNotAllowedError(NovaAgentError):
     def __init__(self, provider: str) -> None:
         super().__init__(
-            message=f"Provider '{provider}' is not allowed; only qwen and doubao are supported",
+            message=f"Provider '{provider}' is not allowed; only qwen is supported",
             code="provider_not_allowed",
             field="providers",
         )
@@ -230,6 +230,65 @@ class MessageRoleError(NovaAgentError):
 class ToolCallError(NovaAgentError):
     def __init__(self, message: str, *, field: str | None = None) -> None:
         super().__init__(message=message, code="tool_call_invalid", field=field)
+
+
+class ToolNotFoundError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="请求的工具不可用", code="tool_not_found", retryable=False)
+
+
+class ToolArgumentsInvalidError(NovaAgentError):
+    def __init__(self, field: str | None = None) -> None:
+        super().__init__(
+            message="工具参数无效",
+            code="tool_arguments_invalid",
+            field=field,
+            retryable=False,
+        )
+
+
+class ToolTimeoutError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="工具执行超时", code="tool_timeout", retryable=False)
+
+
+class ToolExecutionFailedError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="工具未能完成请求", code="tool_execution_failed", retryable=False)
+
+
+class ToolResultInvalidError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="工具结果无效", code="tool_result_invalid", retryable=False)
+
+
+class AgentStepLimitError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="Agent 达到最大步骤数", code="agent_step_limit_reached")
+
+
+class AgentToolCallLimitError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="Agent 达到工具调用上限", code="agent_tool_call_limit_reached")
+
+
+class AgentTimeoutError(NovaAgentError):
+    def __init__(self, code: str = "agent_timeout") -> None:
+        super().__init__(message="Agent 执行超时", code=code, retryable=True)
+
+
+class AgentContextLimitError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(message="Agent 工作上下文超过预算", code="agent_context_limit_reached")
+
+
+class AgentModelOutputInvalidError(NovaAgentError):
+    def __init__(self) -> None:
+        super().__init__(
+            message="模型未返回可处理的 Agent 结果",
+            code="agent_model_output_invalid",
+            retryable=True,
+        )
 
 
 class EmptyMessageError(NovaAgentError):

@@ -36,7 +36,7 @@ def configure_logging(level: str = "INFO") -> logging.Logger:
 
 def _redact(value: str) -> str:
     redacted = value
-    for marker in ("DASHSCOPE_API_KEY", "DOUBAO_API_KEY", "NOVAAGENT_WEB_TOKEN"):
+    for marker in ("DASHSCOPE_API_KEY", "NOVAAGENT_WEB_TOKEN"):
         if marker in redacted:
             redacted = redacted.replace(marker, f"{marker}=<redacted>")
     return redacted

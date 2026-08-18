@@ -95,7 +95,7 @@
 | 02 | 核心消息与事件协议 | 已确认 | 已实现 | 已测试 | 已验收 | PRO-01 ～ PRO-08 |
 | 03 | 千问接入与 Web 单轮聊天 | 已确认 | 已实现 | 已测试 | 已验收 | MOD-01 ～ MOD-05、WEB-02、WEB-04、ECO-01、ECO-05 |
 | 04 | Web 流式输出与多轮会话 | 已确认 | 已实现 | 已测试 | 已验收 | SES-01 ～ SES-06、WEB-02 ～ WEB-04、ECO-05；SES-07 属于阶段 10 |
-| 05 | Agent 决策循环 | 未开始 | 未开始 | 未开始 | 未开始 | AGT-01 ～ AGT-08 |
+| 05 | Agent 决策循环 | 已确认 | 已实现 | 已测试 | 已验收 | AGT-01 ～ AGT-06、AGT-08；自动化、MockTransport、真实千问进程内闭环和 Web echo 均已通过；AGT-07 属于阶段 13 或后续 |
 | 06 | 安全的本地工具 | 未开始 | 未开始 | 未开始 | 未开始 | TOL-01 ～ TOL-12 |
 | 07 | Web 控制台完善 | 未开始 | 未开始 | 未开始 | 未开始 | WEB-01 ～ WEB-09 |
 | 08 | 工作空间与提示词 | 未开始 | 未开始 | 未开始 | 未开始 | WSP-01 ～ WSP-08 |
@@ -115,14 +115,14 @@
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | FND-01 | Python 包与 `src/` 工程布局 | 01 | `pyproject.toml`、根目录包布局 | 全新设计 | 已确认 | 已实现 | 已测试 | 已验收 | 当前工程元数据只覆盖部分 CLI 依赖，不作为新结构模板 |
 | FND-02 | 统一依赖与锁定策略 | 01 | `requirements.txt`、`requirements-optional.txt` | 全新设计 | 已确认 | 已实现 | 已测试 | 已验收 | 使用 `pyproject.toml`、开发依赖组和 `uv.lock` |
-| FND-03 | 配置模型与校验 | 01 | `config.py`、`config-template.json` | 参考行为后重写 + 兼容封装 | 已确认 | 已实现 | 已测试 | 已验收 | 阶段 01 按当时范围允许千问、豆包和 Web；当前目标已改为仅千问和 Web，遗留豆包配置由 MOD-06 跟踪清理 |
+| FND-03 | 配置模型与校验 | 01 | `config.py`、`config-template.json` | 参考行为后重写 + 兼容封装 | 已确认 | 已实现 | 已测试 | 已验收 | 当前配置仅允许千问和 Web；阶段 05 已完成 MOD-06 范围收敛 |
 | FND-04 | 密钥与环境变量管理 | 01 | `~/.cow/.env` 约定、配置迁移逻辑 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 保持密钥不进入工作空间和日志的原则 |
 | FND-05 | 结构化日志与错误模型 | 01 | `common/log.py`、各模块异常处理 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 统一错误码和用户可见错误，不复制散落日志分支 |
 | FND-06 | 非聊天管理 CLI | 01 | `cli/` | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 只建设版本、帮助、诊断、Web 启动和进程管理，不提供终端聊天 |
 | FND-07 | 进程启动与停止 | 01、15 | `app.py`、`scripts/`、`run.sh` | 全新设计，后期参考行为 | 已确认 | 已实现 | 已测试 | 已验收 | 生命周期由 Bootstrap 管理，避免业务入口承担全部装配 |
 | FND-08 | 测试目录与统一验证命令 | 01 | `tests/` | 全新设计 + 参考现有场景 | 已确认 | 已实现 | 已测试 | 已验收 | 现有约 80 个测试文件作为行为场景来源 |
 | FND-09 | CI、格式与静态检查 | 01 | `.github/` | 选择性参考 | 已确认 | 已实现 | 已测试 | 已验收 | GitHub Actions 远端运行已通过；本地与 CI 均执行 Pytest、覆盖率、Ruff 和 Mypy |
-| FND-10 | 本地健康检查与 `doctor` | 01 | Web 健康端点、CLI 状态命令 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 阶段 01 验收时诊断千问和豆包；当前目标为仅显示千问和 Web，遗留输出由 MOD-06 跟踪清理 |
+| FND-10 | 本地健康检查与 `doctor` | 01 | Web 健康端点、CLI 状态命令 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | doctor 和诊断当前仅显示千问和 Web |
 
 ### 6.2 核心消息与事件协议
 
@@ -145,8 +145,8 @@
 | MOD-02 | 模型错误标准化 | 03 | 各 Provider 错误处理、fatal error tests | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 已覆盖鉴权、限流、超时、输入、服务和响应错误 |
 | MOD-03 | 模型使用量与耗时 | 03 | 现有 usage 处理 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | usage 可缺失，合计由 NovaAgent 计算，耗时使用单调时钟 |
 | MOD-04 | 千问能力声明 | 03 | `models/reasoning_capabilities.py` | 选择性复用 | 已确认 | 已实现 | 已测试 | 已验收 | 只声明 NovaAgent 已实现并验收的千问文本能力，不规划豆包或模型多模态扩展 |
-| MOD-05 | Provider 白名单与配置校验 | 03 | `models/custom_provider.py`、旧 Provider 配置 | 全新设计 | 已确认 | 已实现 | 已测试 | 已验收 | 阶段 03 原范围已验收；当前目标收敛为仅千问，遗留豆包配置由 MOD-06 跟踪 |
-| MOD-06 | 千问唯一 Provider 范围收敛 | 05 实现前置 | 当前配置模型、密钥加载、doctor 和测试 | 删除历史兼容面 | 已确认 | 未开始 | 未开始 | 未开始 | 删除豆包配置与 `DOUBAO_API_KEY` 诊断，拒绝所有非千问 Provider；不改变已验收的千问行为，也不阻塞阶段 05 设计 |
+| MOD-05 | Provider 白名单与配置校验 | 03 | `models/custom_provider.py`、旧 Provider 配置 | 全新设计 | 已确认 | 已实现 | 已测试 | 已验收 | 当前仅允许千问，所有其他 Provider 在启动配置校验中拒绝 |
+| MOD-06 | 千问唯一 Provider 范围收敛 | 05 实现前置 | 当前配置模型、密钥加载、doctor 和测试 | 删除历史兼容面 | 已确认 | 已实现 | 已测试 | 已验收 | 运行时配置、doctor、CLI 和测试仅保留千问；旧本地 `.env` 中的豆包键只被忽略，不进入运行环境或诊断输出 |
 
 ### 6.4 流式输出与会话
 
@@ -164,14 +164,14 @@
 
 | 编号 | 新系统能力 | 阶段 | 当前项目参考 | 初步处理方式 | 设计 | 实现 | 测试 | 验收 | 兼容与备注 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| AGT-01 | Agent Run 状态机 | 05 | `agent/protocol/agent.py`、stream executor | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 缩小 Agent 对象职责 |
-| AGT-02 | 工具注册与 Schema | 05 | `agent/tools/tool_manager.py` | 全新设计 + 参考行为 | 未开始 | 未开始 | 未开始 | 未开始 | 区分工具定义、实例和执行上下文 |
-| AGT-03 | 工具调用与结果回填 | 05 | ToolCall / ToolResult 处理 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 使用统一 ContentBlock |
-| AGT-04 | 最大步骤与总超时 | 05 | `agent_max_steps`、超时逻辑 | 选择性参考 | 未开始 | 未开始 | 未开始 | 未开始 | 作为强制安全策略 |
-| AGT-05 | 并行工具调用 | 05 | parallel tool call tests | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 先确认顺序与合并语义再实现 |
-| AGT-06 | 工具失败与恢复 | 05 | Agent result/error handling | 全新设计 + 参考测试 | 未开始 | 未开始 | 未开始 | 未开始 | 失败不破坏会话一致性 |
+| AGT-01 | Agent Run 状态机 | 05 | `agent/protocol/agent.py`、stream executor | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 缩小 Agent 对象职责 |
+| AGT-02 | 工具注册与 Schema | 05 | `agent/tools/tool_manager.py` | 全新设计 + 参考行为 | 已确认 | 已实现 | 已测试 | 已验收 | 区分工具定义、实例和执行上下文 |
+| AGT-03 | 工具调用与结果回填 | 05 | ToolCall / ToolResult 处理 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 使用统一 ContentBlock；工具轨迹只存在当前 run |
+| AGT-04 | 最大步骤与总超时 | 05 | `agent_max_steps`、超时逻辑 | 选择性参考 | 已确认 | 已实现 | 已测试 | 已验收 | 作为强制安全策略 |
+| AGT-05 | 多工具调用批次与确定性顺序 | 05 | parallel tool call tests | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 阶段 05 接受多调用但按供应商顺序串行，真正并行后置 |
+| AGT-06 | 工具失败与恢复 | 05 | Agent result/error handling | 全新设计 + 参考测试 | 已确认 | 已实现 | 已测试 | 已验收 | 失败优先回填 ToolResult，不破坏会话一致性 |
 | AGT-07 | Steering / 运行中追加指令 | 13 或后续 | steer registry | 待阶段设计 | 未开始 | 未开始 | 未开始 | 未开始 | 不在早期 Agent 循环中预埋复杂逻辑 |
-| AGT-08 | 产物与文件发送事件 | 05、07 | artifact、file_to_send 事件 | 参考行为后重写 | 未开始 | 未开始 | 未开始 | 未开始 | 阶段 05 定协议，阶段 07 可视化 |
+| AGT-08 | 产物与文件发送事件 | 05、07 | artifact、file_to_send 事件 | 参考行为后重写 | 已确认 | 已实现 | 已测试 | 已验收 | 阶段 05 维护文本文件引用契约，阶段 06 可产生资源，阶段 07 可视化 |
 
 ### 6.6 本地工具与安全
 
@@ -303,7 +303,7 @@
 | ECO-07 | Web 图片、音频和视频消息 | — | Web 附件、文件缓存、Vision | 明确废弃 | 不适用 | 明确废弃 | 不适用 | 不适用 | 文本文件可在阶段 07 作为工作空间资源设计，但不进入模型多模态消息 |
 | ECO-08 | 模型多模态能力 | — | DashScope、Doubao、`voice/`、Vision 相关实现 | 明确废弃 | 不适用 | 明确废弃 | 不适用 | 不适用 | 不建设图片、音频、视频输入及 ASR、TTS、图像生成任务 |
 | ECO-09 | 不支持能力的显式拒绝 | 03、05 | capability checks、错误处理 | 全新设计 + 参考测试 | 已确认 | 已实现 | 已测试 | 已验收 | 当前 Web/API 只接受文本聊天；后续继续在能力检查阶段拒绝多模态请求 |
-| ECO-10 | 模型与通道配置白名单 | 01、05 实现前置 | 旧 Provider、Channel 和自定义配置 | 全新设计 | 已确认 | 阶段 01 原范围已实现 | 阶段 01 原范围已测试 | 阶段 01 原范围已验收 | 当前目标为启动时拒绝非千问 Provider 和非 Web 聊天通道；豆包遗留由 MOD-06 跟踪清理 |
+| ECO-10 | 模型与通道配置白名单 | 01、05 实现前置 | 旧 Provider、Channel 和自定义配置 | 全新设计 | 已确认 | 已实现 | 已测试 | 已验收 | 启动时拒绝非千问 Provider；Web 是唯一用户聊天通道 |
 
 ### 6.15 运维与交付
 
@@ -343,7 +343,7 @@
 
 | 对象 | 当前形式 | 目标策略 | 确认阶段 | 当前结论 |
 | --- | --- | --- | --- | --- |
-| 主配置 | `config.json` | 只导入通用配置以及千问、Web 配置 | 01、15 | 豆包和其他 Provider、其他通道字段不兼容；当前代码遗留兼容面由 MOD-06 清理 |
+| 主配置 | `config.json` | 只导入通用配置以及千问、Web 配置 | 01、15 | 豆包和其他 Provider、其他通道字段不兼容；MOD-06 已完成运行时清理 |
 | Skill 密钥 | `~/.cow/.env` | 保持外置，按新凭据服务读取 | 01、09 | 待设计 |
 | Agent 工作空间 | `~/cow` 或自定义目录 | 优先直接读取核心 Markdown，必要时导入 | 08、15 | 待设计 |
 | `AGENT.md` | Markdown | 尽量保持格式兼容 | 08 | 待设计 |
@@ -380,6 +380,7 @@
 | PRO-01 ～ PRO-08 | Pytest、覆盖率、Ruff、Mypy、`novaagent doctor` | Fake Model → AgentEvent → In-memory Event Sink → 最终 Message → JSON 往返 | 已验收 | `02-core-message-event-protocol/completion-report.md` |
 | MOD-01 ～ MOD-05、WEB-02、WEB-04、ECO-01、ECO-05 | Pytest、覆盖率、Ruff、Mypy、`novaagent doctor`、真实 Web 演示 | Web → SingleTurnChatService → Qwen Adapter → MockTransport/真实千问 → AgentEvent → Web JSON；负责人确认回答、模型元信息、usage、输入校验、单轮和安全边界正常 | 已验收 | `03-qwen-web-single-turn-chat/completion-report.md` |
 | SES-01 ～ SES-06、WEB-02 ～ WEB-04、ECO-05 | Pytest、覆盖率、Ruff、Mypy、MockTransport | Session API → MultiTurnChatService → Context Window → Qwen streaming Adapter → AgentEvent → SSE；负责人确认真实千问流式多轮 Web 验收通过 | 已验收 | `04-web-streaming-multiturn-session/completion-report.md` |
+| MOD-06、AGT-01 ～ AGT-06、AGT-08 | Pytest、覆盖率、Ruff、Mypy、MockTransport、真实千问 | Web → AgentRunService → Qwen tool_calls → echo → tool result → Qwen 最终回复 → Web；负责人确认修复后真实 Web echo 返回与输入一致 | 已验收 | `05-agent-decision-loop/completion-report.md` |
 
 ## 11. 当前结论
 
@@ -387,4 +388,6 @@
 
 阶段 04“Web 流式输出与多轮会话”已经完成代码、自动化测试和真实 Web 验收，完成报告位于 `04-web-streaming-multiturn-session/completion-report.md`。SES-01 ～ SES-06、WEB-02 ～ WEB-04 和 ECO-05 的阶段 04 子范围均为“已实现、已测试、已验收”。
 
-项目负责人于 2026-08-17 将产品范围进一步收敛为：模型 Provider 只保留千问，用户聊天通道只保留 Web 控制台，不建设模型多模态任务。原阶段 14 标记为“不适用”；豆包 Provider、多 Provider 切换、视觉和其他模型多模态能力均明确废弃。当前代码中已存在的豆包配置与诊断兼容面由 MOD-06 跟踪清理，不把文档决策误写为已完成的代码删除。工程根目录为 `/Users/jiaojie/NovaAgent`。
+项目负责人于 2026-08-17 将产品范围进一步收敛为：模型 Provider 只保留千问，用户聊天通道只保留 Web 控制台，不建设模型多模态任务。原阶段 14 标记为“不适用”；豆包 Provider、多 Provider 切换、视觉和其他模型多模态能力均明确废弃。阶段 05 编码前已完成 MOD-06 运行时配置、诊断、CLI 和测试收敛。工程根目录为 `/Users/jiaojie/NovaAgent`。
+
+阶段 05“Agent 决策循环”已完成实现、自动化测试、MockTransport Web 闭环、真实千问进程内 echo 闭环和负责人 Web 验收，设计及完成报告位于 `05-agent-decision-loop/`。真实协议复验发现并修复了 DashScope 在后续工具分片中发送空 `id` 占位符的兼容问题；负责人于 2026-08-18 确认修复后真实 Web echo 调用成功，最终回复确认返回内容与输入一致。阶段 05、MOD-06、AGT-01 ～ AGT-06 和 AGT-08 均为“已验收”；AGT-07 Steering 继续后置。
